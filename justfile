@@ -26,8 +26,9 @@ test:
     uv run --all-packages pytest -m "not eval"
 
 # Evaluation suite (slow, may cost money)
-eval:
-    uv run --all-packages pytest -m eval
+# Evaluation suite (slow, may cost money); extra args are passed to pytest
+eval *args:
+    uv run --all-packages pytest -m eval {{args}}
 
 # Run the API locally
 dev:
