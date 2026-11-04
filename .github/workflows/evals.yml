@@ -1,0 +1,40 @@
+name: Evals
+
+# Evals are slow, may cost money, and are non-deterministic, so they never gate a PR.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Eval suite to run (pytest -m eval)
+        required: false
+        default: ""
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Install dependencies
+        run: just setup
+
+      - name: Run evals
+        run: just eval ${{ inputs.suite }}
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: evals/reports/
+          if-no-files-found: ignore
