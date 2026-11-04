@@ -32,6 +32,13 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 | 06 | [Decision Log](./06-decision-log.md) | ADR-style records: context, decision, consequences, source. Longer ADRs in [adr/](./adr/README.md) | draft |
 | 07 | [Learning Track](./07-learning-track.md) | Precursor skills in order, each with a "done when" test | draft |
 
+Longer decisions live in [adr/](./adr/README.md):
+
+| ADR | Decision | Status |
+|---|---|---|
+| [0001](./adr/0001-orchestration-langgraph.md) | Orchestration: LangGraph for the missed-call agent | accepted |
+| [0002](./adr/0002-llm-provider.md) | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted |
+
 ## Status key
 
 - **draft** — not yet tested against evidence
