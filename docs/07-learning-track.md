@@ -4,9 +4,9 @@ status: draft
 version: 0.1
 last_updated: 2026-11-04
 sources:
-  - Lubanovic — FastAPI ⚠️ TO CHECK
-  - Huyen — AI Engineering ⚠️ TO CHECK
-  - Kleppmann — Designing Data-Intensive Applications ⚠️ TO CHECK
+  - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
+  - Huyen — AI Engineering (O'Reilly, 2025) — verified
+  - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
 ---
 
 # 07 — Learning Track

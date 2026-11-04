@@ -4,8 +4,8 @@ status: draft
 version: 0.1
 last_updated: 2026-11-04
 sources:
-  - Nygard — Documenting Architecture Decisions (ADR format) ⚠️ TO CHECK
-  - Ries — The Lean Startup (validated learning) ⚠️ TO CHECK
+  - Nygard — Documenting Architecture Decisions (ADR format) — verified
+  - Ries — The Lean Startup (2011) — validated learning — verified
 ---
 
 # 06 — Decision Log
@@ -95,7 +95,7 @@ here as a single entry. Decisions that need more space get a full ADR in
   unproven.
 - **Decision:** The AI never writes free text to customers. LLM output goes to Dad only.
 - **Consequences:** Replies are less personal. Hallucination blast radius is capped.
-- **Source:** Huyen — AI Engineering (agent autonomy) ⚠️ TO CHECK; [00-business-plan.md](./00-business-plan.md) §5
+- **Source:** Huyen — AI Engineering (2025); [00-business-plan.md](./00-business-plan.md) §5
 - **Reversible?:** cheap, but revisit only with evidence from live data.
 
 ### D-005 — One service, one Postgres, no broker
@@ -106,7 +106,7 @@ here as a single entry. Decisions that need more space get a full ADR in
   Kafka, no queue broker, no microservices.
 - **Consequences:** Durability relies on persisting the raw event first. A crash mid-task is
   recovered by reprocessing stored events.
-- **Source:** Kleppmann — DDIA ⚠️ TO CHECK; [05-architecture-and-schema.md](./05-architecture-and-schema.md)
+- **Source:** Kleppmann & Riccomini — DDIA, 2nd ed. (2026); [05-architecture-and-schema.md](./05-architecture-and-schema.md)
 - **Reversible?:** costly once real traffic and data exist.
 
 ### D-006 — Dad goes live in Week 4
@@ -115,7 +115,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Context:** v0.1 had Dad live in Week 6, giving one week of real data.
 - **Decision:** Go live text-only in Week 4, for three weeks of real data.
 - **Consequences:** Hardening is compressed; the Week 4 gate carries more weight.
-- **Source:** Ries — The Lean Startup (shorten the loop) ⚠️ TO CHECK; [00-business-plan.md](./00-business-plan.md) §7
+- **Source:** Ries — The Lean Startup (2011), shorten the loop; [00-business-plan.md](./00-business-plan.md) §7
 - **Reversible?:** cheap
 
 ### D-007 — Python-first `uv` workspace monorepo, `agent_ant_*` naming

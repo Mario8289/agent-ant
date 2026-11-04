@@ -4,9 +4,10 @@ status: draft
 version: 0.2
 last_updated: 2026-11-04
 sources:
-  - Lubanovic — FastAPI (async, Pydantic, background tasks, webhooks) ⚠️ TO CHECK
-  - Kleppmann — Designing Data-Intensive Applications (idempotency, durability, failure modes) ⚠️ TO CHECK
-  - Huyen — AI Engineering (structured output, evaluation, HITL, agent autonomy) ⚠️ TO CHECK
+  - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
+  - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
+  - Huyen — AI Engineering (O'Reilly, 2025) — verified
+  - Twilio — Secure webhooks; incoming message webhook request — checked 2026-11-04
 ---
 
 # 05 — Architecture & Schema
@@ -93,8 +94,8 @@ class LLMOutputAudit(BaseModel):
 | Decision | Choice | Source / reason |
 |---|---|---|
 | Web framework | FastAPI, async | Lubanovic — async webhook handling, Pydantic schemas |
-| Webhook payload | **`application/x-www-form-urlencoded`** | Twilio sends form data, **not JSON** — correction from v0.1 |
-| Webhook security | Verify `X-Twilio-Signature` | Otherwise anyone can inject fake jobs |
+| Webhook payload | **`application/x-www-form-urlencoded`** | Confirmed in Twilio's docs: message webhooks are form-encoded. JSON is opt-in and then carries a `bodySHA256` query parameter |
+| Webhook security | Verify `X-Twilio-Signature` using Twilio's `RequestValidator`, not hand-rolled HMAC | Otherwise anyone can inject fake jobs. Twilio signs with HMAC-SHA1 over the URL plus all parameters and warns against custom implementations |
 | Durability | Persist raw event first, process in background | Kleppmann — survive crashes, avoid lost jobs |
 | Idempotency | Unique constraint on `idempotency_key` | Kleppmann — at-least-once delivery means duplicates are normal |
 | Queue | FastAPI background task, **no broker** | Kleppmann — no premature distributed complexity |
@@ -125,7 +126,7 @@ and less to debug.
 | **R1** | Carrier will not forward unanswered calls to Twilio with caller ID preserved | **Kills the wedge** | Test on Dad's real plan **before** building (gate G0b) | ⚠️ untested |
 | R2 | Callers ignore an SMS from an unknown number | H6 fails | Test early; consider sender identification in the template | open |
 | R3 | Extraction accuracy too low to be useful | Rework or stop | Golden set + threshold in Week 3 | open |
-| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only in dev; paid tier + DPA before live | ⚠️ TO CHECK |
+| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only in dev; paid tier + DPA before live | ⚠️ open — decide in issue #16 |
 | R5 | Twilio signature verification skipped under time pressure | Spoofed jobs | Build it in Week 1, not later | open |
 | R6 | Silent LLM drift after prompt/model changes | Degrading quality | Audit table + edit-rate metric | open |
 

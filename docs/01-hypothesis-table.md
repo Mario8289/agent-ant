@@ -4,10 +4,10 @@ status: draft
 version: 0.2
 last_updated: 2026-11-04
 sources:
-  - Ries — The Lean Startup (leap-of-faith, innovation accounting) ⚠️ TO CHECK
-  - Fitzpatrick — The Mom Test (commitment currencies) ⚠️ TO CHECK
-  - Thiel — Zero to One (10x, beachhead) ⚠️ TO CHECK
-  - Huyen — AI Engineering (HITL, evaluation) ⚠️ TO CHECK
+  - Ries — The Lean Startup (2011) — leap-of-faith, innovation accounting — verified
+  - Fitzpatrick — The Mom Test (2013) — commitment currencies — verified
+  - Thiel — Zero to One (2014) — 10x, beachhead — verified
+  - Huyen — AI Engineering (2025) — HITL, evaluation — verified
 ---
 
 # 01 — Hypothesis Table
@@ -33,7 +33,7 @@ line up front so results cannot be rationalised afterwards.
 | **H2** | Traders will let an AI assist with customer comms | Dad live in Week 4, HITL approve/edit | Dad approves or corrects ≥1 real job **unaided** | Week 4 log | — | untested |
 | **H3** | They will pay a recurring subscription | Pricing conversation + deposit ask, post-prototype | ≥1 deposit or pre-order (cash currency, not verbal interest) | Doc 03 commitment row | — | untested |
 | **H4** | The wedge creates pull for adjacent jobs | Observe Week 4–6 behaviour | Dad **asks** for invoicing/quoting next, unprompted | Week 6 write-up | — | untested |
-| **H5** | Niche depth beats horizontal breadth | Competitor teardown + 10x comparison on one axis | A named axis where the product is demonstrably ~10x better for carpenters | Competitor notes ⚠️ TO CHECK | — | untested |
+| **H5** | Niche depth beats horizontal breadth | Competitor teardown + 10x comparison on one axis | A named axis where the product is demonstrably ~10x better for carpenters | Competitor notes in doc 00 §3 (pricing checked 2026-11-04) | — | untested |
 | **H6** | **Callers reply to the auto-text** | Live missed calls in Weeks 4–6 | Reply rate ≥ threshold *(set after week 1 live, then freeze)* | Twilio logs | — | untested |
 | **H7** | Design partners refer other tradespeople | Ask each interviewee for an intro | ≥2 actual introductions made (reputation currency) | Doc 03 | — | untested |
 | **H8** | Extraction is accurate enough to be useful | Score against a hand-labelled golden set | ≥ agreed accuracy threshold on job_type + callback + urgency | Week 3 eval | — | untested |

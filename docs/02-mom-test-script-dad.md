@@ -4,7 +4,7 @@ status: draft
 version: 0.2
 last_updated: 2026-11-04
 sources:
-  - Fitzpatrick — The Mom Test ⚠️ TO CHECK
+  - Fitzpatrick — The Mom Test (2013) — verified
 ---
 
 # 02 — Mom Test Interview Script — Dad
@@ -33,7 +33,8 @@ invoices — without revealing the product idea. Feeds **H1**, **H3**, **H7** in
 - **Do not pitch, defend, or suggest.** If he complains, say "tell me more", not "I could fix that".
 
 > ⚠️ **Anti-pattern (Fitzpatrick): pitching during discovery.** It contaminates every answer
-> that follows. "Compliments are the fool's gold of customer learning" ⚠️ TO CHECK.
+> that follows. "Compliments are the fool's gold of customer learning: shiny, distracting,
+> and worthless" (verified).
 
 ## Opening (no pitch)
 

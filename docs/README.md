@@ -38,17 +38,22 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 - **validated** — supported by interview or usage data
 - **superseded** — replaced; kept for history
 
-## ⚠️ Verification flags
+## ✅ Verification status
 
-**⚠️ TO CHECK** in any document means the claim has not been confirmed against a source.
+Claims were checked against sources on **2026-11-04** (issue #13). What that covered:
 
-| Category | Why unverified |
+| Category | Status |
 |---|---|
-| Book quotes | Document search unavailable when written; quotes are from general knowledge |
-| Competitor pricing | VioTrade, Tradehand etc. come from unverified research |
-| Grant terms & amounts | Confirm on each programme's official page before applying |
-| GitHub reference repos | Names and star counts unverified |
-| Carrier call forwarding | Untested on Dad's actual mobile plan — **blocks the whole wedge** |
+| Book quotes and editions | Verified — Fitzpatrick (2013), Ries (2011), Thiel (2014), Huyen (2025), Lubanovic (2024), Kleppmann & Riccomini (2026). Fitzpatrick's "fool's gold" quote corrected to "…shiny, distracting, and worthless" |
+| Competitor pricing | Verified against vendor pages — see [00 §3](./00-business-plan.md). Prices change; re-check before quoting |
+| Grant and credit terms | Verified against programme pages — see [04](./04-grants-timeline.md). Supabase's startup programme is discontinued |
+| Reference repos | Verified — `fastapi/full-stack-fastapi-template` (~46k stars), `langchain-ai/langgraph` (~44k), `drivendataorg/cookiecutter-data-science` (~10k) |
+| Twilio webhook behaviour | Verified — form-encoded payloads, `X-Twilio-Signature` validation via the SDK |
+| Carrier call forwarding | **Still untested** on Dad's real plan — this is gate G0b (issue #11) and blocks the wedge |
+
+**⚠️ TO CHECK** still appears where a claim has not been confirmed. After this pass, the
+only open item is carrier call forwarding — and that is a gate to test (G0b, issue #11), not
+desk research.
 
 ## Conventions
 
@@ -66,4 +71,4 @@ Tracked on GitHub under [epic #3](https://github.com/Mario8289/agent-ant/issues/
 1. Foundation milestone — repo scaffold, tooling, CI, docs housekeeping.
 2. Pre-sprint gates — run the discovery interviews (doc 02) and test carrier call forwarding
    to a Twilio number (doc 05, risk R1) **before** any product build hours.
-3. Verify each ⚠️ TO CHECK item, then remove the tag.
+3. ~~Verify each ⚠️ TO CHECK item~~ — done 2026-11-04 (issue #13); see Verification status.

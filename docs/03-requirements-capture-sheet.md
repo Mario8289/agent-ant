@@ -4,8 +4,8 @@ status: draft
 version: 0.2
 last_updated: 2026-11-04
 sources:
-  - Fitzpatrick — The Mom Test (patterns, commitment currencies) ⚠️ TO CHECK
-  - Ries — The Lean Startup (validated learning) ⚠️ TO CHECK
+  - Fitzpatrick — The Mom Test (2013) — patterns, commitment currencies — verified
+  - Ries — The Lean Startup (2011) — validated learning — verified
 ---
 
 # 03 — Requirements Capture Master Sheet

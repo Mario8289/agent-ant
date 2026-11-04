@@ -1,13 +1,13 @@
 ---
 title: Business Plan & 6-Week Prototype
 status: draft
-version: 0.2
+version: 0.3
 last_updated: 2026-11-04
 sources:
-  - Fitzpatrick — The Mom Test ⚠️ TO CHECK
-  - Ries — The Lean Startup ⚠️ TO CHECK
-  - Thiel — Zero to One ⚠️ TO CHECK
-  - Huyen — AI Engineering (agent autonomy limits) ⚠️ TO CHECK
+  - Fitzpatrick — The Mom Test (2013) — verified 2026-11-04
+  - Ries — The Lean Startup (2011) — verified 2026-11-04
+  - Thiel — Zero to One (2014) — verified 2026-11-04
+  - Huyen — AI Engineering (O'Reilly, 2025) — verified 2026-11-04
 ---
 
 # 00 — Business Plan & 6-Week Prototype
@@ -49,19 +49,32 @@ rationalised afterwards.
 > ⚠️ **Anti-pattern (Ries):** treating a polished plan as progress. If a hypothesis has no
 > falsifying test, it is decoration, not a plan.
 
-## 3. Competitors — ⚠️ TO CHECK (all pricing unverified)
+## 3. Competitors — pricing checked 2026-11-04
 
-| Player | Claim | Why it matters |
-|---|---|---|
-| VioTrade | All-in-one voice + quotes + invoices + jobs, ~£20/mo flat | Already "unified" — kills the old H5 |
-| Tradehand | Answers + quotes + books + chases, from ~£25/mo | Full-pipeline positioning |
-| MyTradeBuddy | Enquiry → qualified → chased → booked | Same pipeline claim |
-| HeyItsClara / Rosie AI / Down To Earth AI | AI receptionist / message taking | Crowded at the answering layer |
-| Tradify, ServiceM8, Fergus, Jobber | Job management, per-user pricing, little/no AI | Incumbents, differentiation window |
+Prices are list prices on the vendor's own page on 2026-11-04, ex-VAT unless stated, and
+change often. Re-check before quoting any figure to a customer.
 
-**Implication (Thiel):** "all failed companies are the same: they failed to escape
-competition" ⚠️ TO CHECK. "UK tradespeople" is already contested, so the beachhead must be
-narrower — **carpenters/joiners**, or one region, or one job type.
+| Player | Listed price | Claim | Why it matters |
+|---|---|---|---|
+| [VioTrade](https://viotrade.co.uk/pricing) | £20/mo, or £16.67/mo billed £200/yr; +£10/mo per extra user | All-in-one: AI voice agent, quotes/invoices, jobs, website builder, CRM | Already "unified" and cheap — kills the old H5 |
+| [Tradehand](https://www.tradehand.com) | Not published | Answers phone/SMS/email/web chat, sends and chases quotes, books jobs, takes payment | Full-pipeline positioning, same wedge |
+| [MyTradeBuddy](https://www.mytradebuddy.co/ai-receptionist) | Not published — "per booked survey" | Enquiry → qualified → booked | Prices on outcomes, not seats |
+| [Clara](https://www.getclaraai.com/pricing) | $99–$749/mo across four tiers | AI receptionist for tradespeople | Crowded at the answering layer |
+| [Rosie AI](https://heyrosie.com) | $49 / $149 / $299 per month (250 / 1,000 / 2,000 min) | AI receptionist, US-centric | Same layer, cheaper entry |
+| [Down To Earth AI](https://downtoearthai.co.uk) | £45/mo, no contract | AI receptionist for UK tradesmen, built by a tradesman | UK-specific and cheap |
+| [Tradify](https://www.tradifyhq.com/uk/pricing) | £34 / £37 / £44 per user/mo (Lite / Pro / Plus) | Job management, invoicing | Incumbent; per-seat |
+| [ServiceM8](https://www.servicem8.com) | Free tier; US$29 / $79 / $149 / $349 per account (50 / 150 / 500 / 1,500 jobs) | Job management, AI invoice, Phone Agent | Priced per job, not per seat |
+| [Fergus](https://fergus.com) | A$53 / A$77 per user/mo (regional pricing differs) | Job management | Incumbent |
+| [Jobber](https://www.getjobber.com/pricing) | US$49 Core → $199 Grow (1 user, monthly); AI receptionist sold as an add-on | Field service suite | Incumbent adding AI |
+
+**Implication (Thiel):** "All failed companies are the same: they failed to escape
+competition" (Zero to One, verified). "UK tradespeople" is already contested — VioTrade is
+£20/mo with an AI voice agent, and Down To Earth AI is £45/mo — so the beachhead must be
+narrower: **carpenters/joiners**, or one region, or one job type.
+
+**Note for H5:** the answering layer is crowded and cheap, so "we answer missed calls" is not
+a 10x axis. The differentiation has to come from what happens *after* the call: carpentry-
+specific job records and quoting.
 
 **Differentiation must be ~10x on one axis (Thiel), not a feature list.** Candidates:
 carpentry-specific quoting using SKU/margin data; regional trust density.
@@ -79,7 +92,8 @@ in the past not future opinions; talk less, listen more. Real signal is commitme
 of three currencies — **time, reputation, cash**.
 
 > ⚠️ **Anti-pattern (Fitzpatrick):** pitching during discovery. Describing the app
-> contaminates the data. "Compliments are the fool's gold of customer learning" ⚠️ TO CHECK.
+> contaminates the data. "Compliments are the fool's gold of customer learning: shiny,
+> distracting, and worthless" (The Mom Test, verified).
 
 ## 5. MVP definition
 
@@ -110,7 +124,7 @@ problem was validated, which risked spending build hours on an unproven pain.
 | Gate | Test | Pass line |
 |---|---|---|
 | **G0a — Discovery** | 6 Mom Test interviews | ≥3 of 6 cite a *specific* missed call and a lost job |
-| **G0b — Carrier forwarding** ⚠️ TO CHECK | Forward Dad's unanswered calls to a Twilio number, caller ID preserved | Works on his real mobile plan |
+| **G0b — Carrier forwarding** ⚠️ untested (issue #11) | Forward Dad's unanswered calls to a Twilio number, caller ID preserved | Works on his real mobile plan |
 | **G0c — Precursor skills** | Ready Check in doc 05 | All 5 items pass |
 
 If G0a fails, do not build. Reconsider the wedge or the segment. Per Ries this is validated
@@ -160,6 +174,9 @@ Lubanovic (FastAPI) · Huyen (agents, evaluation, HITL) · Kleppmann (scale, lat
 
 ## Change history
 
+- **0.3 (2026-11-04)** — competitor pricing verified against vendor pages (VioTrade £20/mo,
+  Down To Earth AI £45/mo, Tradify £34–£44/user); Thiel and Fitzpatrick quotes verified;
+  source editions added; G0b relabelled as untested rather than unverified.
 - **0.2 (2026-11-04)** — discovery and carrier test moved pre-sprint; Dad live Week 4;
   real-time voice deferred; AI barred from free-text customer SMS; H5 replaced; H6/H7 added;
   Week 3 gate made numeric.
