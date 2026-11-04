@@ -1,0 +1,54 @@
+[project]
+name = "agent-ant"
+version = "0.1.0"
+description = "Python-first monorepo for AI agents and the products around them"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "alembic>=1.14",
+    "httpx>=0.28",
+    "pre-commit>=4.0",
+    "pyright>=1.1.400",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "agents/*", "apps/api"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["evals/reports", "migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["agent_ant_core", "agent_ant_api", "agent_ant_missed_call"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pyright]
+include = ["packages", "agents", "apps"]
+exclude = ["**/node_modules", "**/.venv", "evals/reports", "migrations/versions"]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+# The shared core is the one place held to strict typing.
+strict = ["packages/core/src", "packages/core/tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "agents", "apps"]
+addopts = "-ra"
+markers = [
+    "eval: slow or paid evaluation tests; excluded from the default run",
+]
