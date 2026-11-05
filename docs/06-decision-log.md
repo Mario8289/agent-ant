@@ -1,8 +1,8 @@
 ---
 title: Decision Log
 status: draft
-version: 0.1
-last_updated: 2026-11-04
+version: 0.3
+last_updated: 2026-11-05
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
   - Ries — The Lean Startup (2011) — validated learning — verified
@@ -48,7 +48,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-005 | One service, one Postgres, no broker | accepted | 2026-11-04 |
 | D-006 | Dad goes live in Week 4 | accepted | 2026-11-04 |
 | D-007 | Python-first `uv` workspace monorepo, `agent_ant_*` naming | accepted | 2026-11-04 |
-| D-008 | Orchestration: plain Python steps, not LangGraph | proposed | 2026-11-04 |
+| D-008 | Orchestration: LangGraph for the missed-call agent | accepted | 2026-11-05 |
+| D-009 | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted | 2026-11-05 |
 
 ## Entries
 
@@ -134,16 +135,39 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Source:** Planning discussion 2026-11-04; tracked in the Foundation milestone.
 - **Reversible?:** costly once many packages exist; cheap now.
 
-### D-008 — Orchestration: plain Python steps, not LangGraph
-- **Date:** 2026-11-04
-- **Status:** proposed — awaiting founder sign-off (issue #14)
-- **Context:** The MVP flow is linear: receive → extract → validate → confirm.
-- **Decision (proposed):** Plain functions plus Pydantic. Introduce LangGraph only if the
-  conversation becomes genuinely multi-turn with branching.
-- **Consequences:** The LangGraph precursor item drops in priority in
-  [07-learning-track.md](./07-learning-track.md).
-- **Source:** [05-architecture-and-schema.md](./05-architecture-and-schema.md) — Orchestration
-- **Reversible?:** cheap
+### D-008 — Orchestration: LangGraph for the missed-call agent
+- **Date:** 2026-11-05
+- **Status:** accepted
+- **Context:** The flow has three branch points (valid vs. invalid extraction, repair
+  exhausted, human approve/edit/reject) and is expected to become multi-turn. The first draft
+  recommended plain Python steps; the founder rejected that so the orchestration model is in
+  place before the flow grows.
+- **Decision:** LangGraph `StateGraph` from Week 2, with a Postgres checkpointer and
+  `interrupt()` for human approval. The dependency lives in `agents/missed_call` only;
+  `packages/core` stays framework-free. Nodes call plain functions, so business logic stays
+  unit-testable.
+- **Consequences:** A framework to learn, pin and debug; checkpoint tables need a migration;
+  graph wiring needs its own test harness. In exchange, branching, resumability and
+  human-in-the-loop come from the framework. G0c item 5 is active again and the LangGraph
+  learning row moves up.
+- **Source:** [adr/0001-orchestration-langgraph.md](./adr/0001-orchestration-langgraph.md)
+- **Reversible?:** costly once the graph and checkpoints are in production; cheap now.
+
+### D-009 — LLM provider: swappable for the MVP, DPA-backed lock before live
+- **Date:** 2026-11-05
+- **Status:** accepted
+- **Context:** Customer messages are personal data under UK GDPR, so live traffic needs a DPA,
+  a UK transfer mechanism and a no-training commitment. There is no live traffic yet, and the
+  founder does not want prompts and evals tuned to one model before the MVP is proven.
+- **Decision:** Keep the provider swappable during the MVP and use whatever is cheapest for
+  synthetic data. **Bedrock is the default** when credentials allow: AWS DPA, no training on
+  inputs or outputs, and `eu-west-2` (London) for UK in-region inference. Lock one DPA-backed
+  provider and re-run the golden set before Dad goes live in Week 4 (#29).
+- **Consequences:** R4 stays open until Week 4 — the risk being carried. Mitigations are the
+  synthetic-data rule and the explicit gate. An adapter seam keeps a switch to a config change.
+  Real customer messages arriving early must not be sent to the LLM.
+- **Source:** [adr/0002-llm-provider.md](./adr/0002-llm-provider.md)
+- **Reversible?:** cheap by design — that is the point of the decision.
 
 ## Anti-patterns
 
@@ -156,8 +180,13 @@ here as a single entry. Decisions that need more space get a full ADR in
 ## Open questions
 
 - Which beachhead segment (carpenters nationally or one region)? See issue #15.
-- Which paid LLM tier and DPA? See issue #16.
+- Which provider wins the Week 4 lock-in? Decide on the golden set and the DPA, at gate #29.
 
 ## Change history
 
+- **0.3 (2026-11-05)** — D-008 and D-009 accepted on the founder's decision: LangGraph rather
+  than plain steps, and a swappable LLM provider with Bedrock preferred and a DPA-backed lock
+  before live traffic.
+- **0.2 (2026-11-04)** — D-008 expanded and linked to its ADR; D-009 added for the LLM provider
+  and DPA decision; both remain `proposed` pending founder sign-off.
 - **0.1 (2026-11-04)** — created with seed entries D-001 to D-008.

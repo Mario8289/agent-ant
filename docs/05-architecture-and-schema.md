@@ -1,8 +1,8 @@
 ---
 title: Architecture & Schema
 status: draft
-version: 0.2
-last_updated: 2026-11-04
+version: 0.4
+last_updated: 2026-11-05
 sources:
   - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
   - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
@@ -99,6 +99,7 @@ class LLMOutputAudit(BaseModel):
 | Durability | Persist raw event first, process in background | Kleppmann — survive crashes, avoid lost jobs |
 | Idempotency | Unique constraint on `idempotency_key` | Kleppmann — at-least-once delivery means duplicates are normal |
 | Queue | FastAPI background task, **no broker** | Kleppmann — no premature distributed complexity |
+| Orchestration | LangGraph `StateGraph` + Postgres checkpointer | Explicit branching and `interrupt()`-based HITL; dependency confined to `agents/missed_call` (D-008) |
 | Database | Single Postgres (Supabase) | One writer, transactions, no consensus needed |
 | LLM output | Structured output + Pydantic validation + repair | Huyen — never trust raw model text |
 | Customer-facing SMS | **Fixed template only, never LLM-generated** | Huyen — cap agent autonomy and hallucination blast radius |
@@ -106,18 +107,20 @@ class LLMOutputAudit(BaseModel):
 | Drift monitoring | Log every output + human edit; track edit rate | Huyen — unmonitored drift degrades silently |
 | Real-time voice | **Deferred post-MVP** | Latency/cost/complexity; no hypothesis requires it |
 
-## Orchestration: LangGraph vs. plain steps — ⚠️ OPEN DECISION
+## Orchestration: LangGraph
 
-v0.1 assumed LangGraph from Week 3. Reconsidered: the MVP flow is **linear**
-(receive → extract → validate → confirm), which plain Python steps handle with less to learn
-and less to debug.
+The MVP flow is **linear on paper** (receive → extract → validate → persist → notify → human
+review), but it already branches on extraction validity, repair exhaustion and the human
+decision, and is expected to become multi-turn. The founder chose LangGraph so the orchestration
+model is in place before the flow grows.
 
-- **Proposed:** start with plain functions plus Pydantic. Introduce LangGraph only if the
-  conversation becomes genuinely multi-turn with branching.
-- **Consequence:** the LangGraph precursor course drops in priority; FastAPI and structured
-  output courses come first.
-- **Status:** awaiting founder sign-off. Recorded in
-  [06-decision-log.md](./06-decision-log.md).
+- **Decision:** LangGraph `StateGraph`, with a Postgres checkpointer and `interrupt()` for human
+  approval. The dependency lives in `agents/missed_call` only; `packages/core` stays
+  framework-free. Nodes call plain functions, so business logic stays unit-testable.
+- **Consequence:** the LangGraph learning row moves up, ahead of evaluation. G0c item 5 is back
+  on the critical path. Checkpoint tables need an Alembic migration.
+- **Status:** `accepted` in [D-008](./06-decision-log.md); full reasoning in
+  [adr/0001-orchestration-langgraph.md](./adr/0001-orchestration-langgraph.md).
 
 ## Risk register
 
@@ -126,7 +129,7 @@ and less to debug.
 | **R1** | Carrier will not forward unanswered calls to Twilio with caller ID preserved | **Kills the wedge** | Test on Dad's real plan **before** building (gate G0b) | ⚠️ untested |
 | R2 | Callers ignore an SMS from an unknown number | H6 fails | Test early; consider sender identification in the template | open |
 | R3 | Extraction accuracy too low to be useful | Rework or stop | Golden set + threshold in Week 3 | open |
-| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only in dev; paid tier + DPA before live | ⚠️ open — decide in issue #16 |
+| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only until Week 4; lock one DPA-backed provider (Bedrock preferred) before live traffic (D-009) | open — deferred to #29 |
 | R5 | Twilio signature verification skipped under time pressure | Spoofed jobs | Build it in Week 1, not later | open |
 | R6 | Silent LLM drift after prompt/model changes | Degrading quality | Audit table + edit-rate metric | open |
 
@@ -136,7 +139,7 @@ and less to debug.
 2. LLM returns a Pydantic-validated structured object from messy text, with a repair path.
 3. Twilio number triggers the webhook on a missed call **on Dad's real carrier**.
 4. Write and read a record in Supabase from Python, with a working unique constraint.
-5. *(Deferred if LangGraph is dropped)* build a state graph with one conditional branch.
+5. Build a LangGraph state graph with one conditional branch and a Postgres checkpointer.
 
 ## Anti-patterns
 
@@ -152,13 +155,21 @@ and less to debug.
 
 ## Open questions
 
-- LangGraph or plain steps for v0? (see above)
+- ~~LangGraph or plain steps for v0?~~ Decided — LangGraph, see D-008 and
+  [ADR 0001](./adr/0001-orchestration-langgraph.md).
 - Does Dad's carrier support conditional call forwarding to a Twilio number with caller ID?
-- Which paid LLM tier provides a suitable UK/EU data-processing agreement?
+- ~~Which paid LLM tier provides a suitable UK/EU data-processing agreement?~~ Deferred to
+  Week 4 (#29); Bedrock preferred, see D-009 and [ADR 0002](./adr/0002-llm-provider.md).
 - SMS sender identity: can messages appear to come from Dad's business name?
 
 ## Change history
 
+- **0.4 (2026-11-05)** — LangGraph accepted (D-008) and orchestration section rewritten; G0c
+  item 5 active again; R4 reframed as deferred to the Week 4 DPA lock (D-009); open questions
+  resolved.
+- **0.3 (2026-11-04)** — orchestration decision documented in ADR 0001 and linked; LLM provider
+  and DPA decision documented in ADR 0002 (D-009); R4 mitigation updated; open questions
+  resolved or narrowed.
 - **0.2 (2026-11-04)** — Mermaid diagram added; Twilio payload corrected to form-encoded;
   persist-before-processing made explicit; idempotency key defined; signature verification
   added; trusted-vs-extracted field split; audit schema added; fixed-template-only customer
