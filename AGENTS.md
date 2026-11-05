@@ -86,3 +86,5 @@ Also: no product build work before the pre-sprint gates pass (`docs/00-business-
 - Docs updated if behaviour or decisions changed; new decisions get an entry in
   `docs/06-decision-log.md`.
 - The PR body says `Closes #<n>` for each issue it resolves.
+- Each closed issue gets a resolution comment linking the PR and the files it delivered.
+  `Closes #<n>` closes silently and leaves no evidence on the issue.
