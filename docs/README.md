@@ -32,6 +32,13 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 | 06 | [Decision Log](./06-decision-log.md) | ADR-style records: context, decision, consequences, source. Longer ADRs in [adr/](./adr/README.md) | draft |
 | 07 | [Learning Track](./07-learning-track.md) | Precursor skills in order, each with a "done when" test | draft |
 
+## Testing & reference
+
+| Document | Purpose | Status |
+|---|---|---|
+| [08 — Telephony Forwarding Test](./08-telephony-forwarding-test.md) | G0b runbook: Twilio setup, iPhone no-answer codes, pass/fail | draft |
+| [Glossary](./glossary.md) | Plain-English definitions: telephony, Twilio, product and process terms | draft |
+
 Longer decisions live in [adr/](./adr/README.md):
 
 | ADR | Decision | Status |
