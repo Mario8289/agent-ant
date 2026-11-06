@@ -91,6 +91,16 @@ Repeat with Dad's handset, using his carrier's code. Do not use his phone for th
 - What the **From** field showed
 - Any delay or error
 
+## Known limitation: the customer sets up forwarding
+
+Forwarding is set on the customer's phone, not in Twilio, and the app cannot change it. Every
+tradesperson has to dial the codes or set the carrier option themselves. That is friction at
+onboarding and a support cost, and it may stop some customers from ever completing setup.
+
+Not solved now. Revisit before Week 4 and again if the wedge passes. Options to weigh then:
+guided setup with screenshots per carrier, a carrier-specific setup service, or a different
+call-capture route (for example, a number the customer already uses as their business line).
+
 ## Change history
 
 - **0.1 (2026-11-06)** — first version, written after testing the iPhone setting. Corrects the
