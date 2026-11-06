@@ -37,6 +37,7 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 | Document | Purpose | Status |
 |---|---|---|
 | [08 — Telephony Forwarding Test](./08-telephony-forwarding-test.md) | G0b runbook: Twilio setup, iPhone no-answer codes, pass/fail | draft |
+| [09 — Execution Plan](./09-execution-plan.md) | What to do next, in order, week by week, with the gates | draft |
 | [Glossary](./glossary.md) | Plain-English definitions: telephony, Twilio, product and process terms | draft |
 
 Longer decisions live in [adr/](./adr/README.md):
