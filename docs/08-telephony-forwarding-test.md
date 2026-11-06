@@ -52,6 +52,7 @@ confirm they work on your network before relying on them.
 |---|---|---|
 | Forward when not answered | `**61*+447533021710#` then call | Forward after the default ring time |
 | Set the ring time | `**61*+447533021710**20#` | Seconds: 5, 10, 15, 20, 25 or 30. Here 20 seconds |
+| Forward when phone is off or unreachable | `**62*+447533021710#` then call | Separate setting from no-answer. Covers switched-off or no-signal |
 | Check the status | `*#61#` then call | Shows where no-answer calls go |
 | Turn off no-answer forwarding | `##61#` then call | Do this after the test |
 
@@ -90,6 +91,20 @@ Repeat with Dad's handset, using his carrier's code. Do not use his phone for th
 - Whether the forward triggered
 - What the **From** field showed
 - Any delay or error
+
+## Results so far (test phone, 2026-11-06)
+
+| Check | Result |
+|---|---|
+| Twilio number receives calls | Pass — TwiML Bin plays the message |
+| No-answer forward, ring time 15 seconds | Pass — set on the test phone (confirmation shown) |
+| Phone off or unreachable forward | Pass — calls reach the Twilio number |
+| Caller ID (**From**) on a forwarded call | **Not yet recorded** — needs the call log value |
+| Carrier | **Not yet recorded** |
+| Dad's real mobile plan | **Not tested** |
+
+Codes and ring time above are the ones that worked on the test phone. The 15-second default
+varies by network, so record the value your own network uses.
 
 ## Known limitation: the customer sets up forwarding
 
