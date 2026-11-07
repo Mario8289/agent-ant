@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from agent_ant_api.webhooks import router as webhooks_router
 from agent_ant_core.config import get_settings
 
 
@@ -13,6 +14,7 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
     app = FastAPI(title="agent-ant api", version="0.1.0")
+    app.include_router(webhooks_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

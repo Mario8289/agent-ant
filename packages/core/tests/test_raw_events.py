@@ -1,57 +1,22 @@
 """Tests for raw-event persistence and the baseline migration.
 
-These need a real Postgres: the guarantee under test is a database unique constraint, which
-SQLite cannot stand in for. Point ``TEST_DATABASE_URL`` at a throwaway database; the tests run
-the Alembic migration against it and clear ``raw_events`` before each test. Without the variable
-they skip locally and fail under CI, so a missing database cannot hide in a green build.
+The ``engine`` and ``session`` fixtures live in the root ``conftest.py`` (needs
+``TEST_DATABASE_URL``; see migrations/README.md).
 """
 
-import os
-from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import Engine, create_engine, func, inspect, select, text
+from sqlalchemy import Engine, func, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from agent_ant_core.db.idempotency import persist_raw_event
 from agent_ant_core.db.models import RawEvent
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 CALL_SID = "CA00000000000000000000000000000001"
 PAYLOAD = {"CallSid": CALL_SID, "From": "+447000000000", "To": "+447000000001"}
-
-
-@pytest.fixture(scope="module")
-def engine() -> Iterator[Engine]:
-    url = os.environ.get("TEST_DATABASE_URL")
-    if not url:
-        message = "TEST_DATABASE_URL is not set (see migrations/README.md)"
-        if os.environ.get("CI"):
-            pytest.fail(message)
-        pytest.skip(message)
-
-    config = Config(str(REPO_ROOT / "alembic.ini"))
-    config.set_main_option("sqlalchemy.url", url)
-    command.downgrade(config, "base")
-    command.upgrade(config, "head")
-
-    test_engine = create_engine(url)
-    yield test_engine
-    test_engine.dispose()
-
-
-@pytest.fixture
-def session(engine: Engine) -> Iterator[Session]:
-    with engine.begin() as conn:
-        conn.execute(text("TRUNCATE raw_events"))
-    with Session(engine) as db:
-        yield db
 
 
 def _persist(db: Session, key: str = CALL_SID) -> bool:
