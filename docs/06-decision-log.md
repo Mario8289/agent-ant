@@ -165,6 +165,8 @@ here as a single entry. Decisions that need more space get a full ADR in
   synthetic data. **Bedrock is the default** when credentials allow: AWS DPA, no training on
   inputs or outputs, and `eu-west-2` (London) for UK in-region inference. Lock one DPA-backed
   provider and re-run the golden set before Dad goes live in Week 4 (#29).
+- **Chosen 2026-11-07:** Bedrock, `eu-west-2`, single-region inference, for Week 2 development.
+  The model is picked when #22 starts, after checking it is offered in London.
 - **Consequences:** R4 stays open until Week 4 — the risk being carried. Mitigations are the
   synthetic-data rule and the explicit gate. An adapter seam keeps a switch to a config change.
   Real customer messages arriving early must not be sent to the LLM.
