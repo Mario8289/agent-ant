@@ -152,3 +152,37 @@ def test_unconfigured_twilio_still_stores_and_answers(session: Session) -> None:
     response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
 
     assert response.status_code == 200
+
+
+# --- SMS reply ----------------------------------------------------------------------------
+
+REPLY_PATH = "/webhooks/sms-reply"
+REPLY = {
+    "MessageSid": "SM00000000000000000000000000000001",
+    "From": FORM["From"],
+    "Body": "Leaky tap",
+}
+
+
+def test_reply_is_stored_once_and_linked_to_the_missed_call(session: Session) -> None:
+    client = _client(_use(session))
+    client.post(PATH, data=FORM, headers=_sign(_url(client)))
+    url = str(client.base_url).rstrip("/") + REPLY_PATH
+    headers = _sign(url, REPLY)
+
+    assert client.post(REPLY_PATH, data=REPLY, headers=headers).status_code == 200
+    assert client.post(REPLY_PATH, data=REPLY, headers=headers).status_code == 200
+
+    call = session.execute(select(RawEvent).where(RawEvent.source == "voice_call")).scalar_one()
+    reply = session.execute(select(RawEvent).where(RawEvent.source == "sms_reply")).scalar_one()
+    assert reply.idempotency_key == REPLY["MessageSid"]
+    assert reply.related_event_id == call.id
+
+
+def test_reply_with_no_missed_call_is_stored_unlinked(session: Session) -> None:
+    client = _client(_use(session))
+    url = str(client.base_url).rstrip("/") + REPLY_PATH
+    response = client.post(REPLY_PATH, data=REPLY, headers=_sign(url, REPLY))
+
+    assert response.status_code == 200
+    assert session.execute(select(RawEvent)).scalar_one().related_event_id is None

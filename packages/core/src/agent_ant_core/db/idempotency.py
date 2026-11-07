@@ -16,6 +16,7 @@ def persist_raw_event(
     caller_number: str,
     received_at: datetime,
     payload: dict[str, str],
+    related_event_id: int | None = None,
 ) -> bool:
     """Store the raw event unless this ``idempotency_key`` was already stored.
 
@@ -37,6 +38,7 @@ def persist_raw_event(
             caller_number=caller_number,
             received_at=received_at,
             payload=payload,
+            related_event_id=related_event_id,
         )
         .on_conflict_do_nothing(index_elements=[RawEvent.idempotency_key])
         .returning(RawEvent.id)

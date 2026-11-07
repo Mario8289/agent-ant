@@ -8,7 +8,7 @@ replayed from here if processing fails.
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, MetaData, Text, func
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, MetaData, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -51,4 +51,8 @@ class RawEvent(Base):
     caller_number: Mapped[str] = mapped_column(Text)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict[str, str]] = mapped_column(JSONB)
+    # An SMS reply points at the missed call it answers. Null for voice calls and unmatched replies.
+    related_event_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("raw_events.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
