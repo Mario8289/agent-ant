@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from twilio.request_validator import RequestValidator
 
 from agent_ant_api.main import create_app
+from agent_ant_api.sms import SmsSender, build_missed_call_message, get_sms_sender
 from agent_ant_api.webhooks import get_session
 from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.models import RawEvent
@@ -37,12 +38,15 @@ def _use(session: Session) -> Callable[[], Iterator[Session]]:
 
 
 def _client(
-    session_dependency: Callable[[], Iterator[Session]] = _no_database, **settings: object
+    session_dependency: Callable[[], Iterator[Session]] = _no_database,
+    sms_sender: SmsSender | None = None,
+    **settings: object,
 ) -> TestClient:
     values: dict[str, object] = {"twilio_auth_token": SecretStr(TOKEN), **settings}
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: Settings(_env_file=None, **values)  # type: ignore[arg-type]
     app.dependency_overrides[get_session] = session_dependency
+    app.dependency_overrides[get_sms_sender] = lambda: sms_sender
     return TestClient(app)
 
 
@@ -103,3 +107,48 @@ def test_signature_is_checked_against_the_public_base_url(session: Session) -> N
     client = _client(_use(session), public_base_url=public)
 
     assert client.post(PATH, data=FORM, headers=_sign(public + PATH)).status_code == 200
+
+
+class FakeSms:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.sent: list[tuple[str, str]] = []
+        self.error = error
+
+    def __call__(self, to: str, body: str) -> None:
+        if self.error:
+            raise self.error
+        self.sent.append((to, body))
+
+
+def test_first_delivery_sends_one_fixed_template_text(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    assert sms.sent == [(FORM["From"], build_missed_call_message("Dave's Joinery"))]
+    assert "Dave's Joinery" in sms.sent[0][1]
+
+
+def test_retry_does_not_send_a_second_text(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms)
+    headers = _sign(_url(client))
+    client.post(PATH, data=FORM, headers=headers)
+    client.post(PATH, data=FORM, headers=headers)
+
+    assert len(sms.sent) == 1
+
+
+def test_send_failure_does_not_fail_the_webhook(session: Session) -> None:
+    client = _client(_use(session), FakeSms(error=TimeoutError("twilio is down")))
+    response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    assert response.status_code == 200
+    assert session.execute(select(func.count()).select_from(RawEvent)).scalar_one() == 1
+
+
+def test_unconfigured_twilio_still_stores_and_answers(session: Session) -> None:
+    client = _client(_use(session), sms_sender=None)
+    response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    assert response.status_code == 200

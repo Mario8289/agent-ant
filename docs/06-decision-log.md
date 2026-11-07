@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.4
+version: 0.5
 last_updated: 2026-11-07
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -51,6 +51,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-008 | Orchestration: LangGraph for the missed-call agent | accepted | 2026-11-05 |
 | D-009 | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted | 2026-11-05 |
 | D-010 | Start Week 1 build before G0a, G0b and the beachhead decision | accepted | 2026-11-07 |
+| D-011 | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
 
 ## Entries
 
@@ -189,6 +190,29 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Source:** founder decision, 2026-11-07; [00-business-plan.md](./00-business-plan.md) §6
 - **Reversible?:** cheap — about one week of segment-agnostic plumbing.
 
+### D-011 — Auto-SMS sender: Twilio number plus business name in the text (R2)
+- **Date:** 2026-11-07
+- **Status:** accepted
+- **Context:** The auto-text (#20) must come from some sender. The caller phoned Dad's mobile,
+  the unanswered call was forwarded to a Twilio number, and the text comes from that Twilio
+  number, so it is a number the caller does not know. R2 (callers ignore or distrust an SMS from
+  an unknown number) is open, and the founder worried it looks like a scam or invites replies to
+  the wrong number.
+- **Decision:** Send from the Twilio number and name the business in the fixed template ("Hi,
+  it's <business>. ... This is our text line: reply with ..."). The sender is configuration,
+  not code. Revisit only if the caller reply rate (H6) comes in below threshold.
+- **Consequences:** Replies reach the Twilio number, so the reply webhook (#21) works. Options
+  not taken, per Twilio's own pages (checked 2026-11-07): an alphanumeric sender ID (business
+  name as sender) is described as one-way, so the caller could not reply and the flow breaks;
+  porting Dad's mobile number into Twilio would show a number the caller knows, but UK mobile
+  porting is a manual "custom" process and would redesign the carrier-forwarding approach
+  (G0b). A Twilio UK mobile (+447) number is a cheaper middle option, not yet checked for cost
+  or regulatory paperwork. A caller who rings the Twilio number back hears the fixed message
+  and gets no human.
+- **Source:** founder decision, 2026-11-07; [05-architecture-and-schema.md](./05-architecture-and-schema.md) R2;
+  Twilio alphanumeric sender ID and UK porting guidelines
+- **Reversible?:** cheap — the sender is a setting and the wording is one template.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -205,6 +229,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.5 (2026-11-07)** — D-011 accepted: auto-SMS sent from the Twilio number with the business
+  name in the template; revisit on a low reply rate.
 - **0.4 (2026-11-07)** — D-010 accepted: Week 1 build starts before G0a, G0b and the beachhead
   decision, on the founder's say-so.
 - **0.3 (2026-11-05)** — D-008 and D-009 accepted on the founder's decision: LangGraph rather
