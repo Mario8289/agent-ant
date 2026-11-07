@@ -6,6 +6,7 @@ comes from `DATABASE_URL` (see `.env.example`); no credentials are stored in `al
 | Revision | What |
 |---|---|
 | `0001` | Baseline: `raw_events` with `idempotency_key UNIQUE` (issue #19) |
+| `0002` | `raw_events.related_event_id`: an SMS reply points at its missed call (issue #21) |
 
 ## Everyday commands
 
