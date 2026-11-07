@@ -78,7 +78,9 @@ Out of scope until the docs change: real-time voice, multi-agent orchestration, 
 message brokers, invoicing/payments, a polished UI. The MVP is one service, one Postgres, and
 background tasks (D-005).
 
-Also: no product build work before the pre-sprint gates pass (`docs/00-business-plan.md` §6).
+Also: the pre-sprint gates (`docs/00-business-plan.md` §6) are deferred, not passed. D-010 allows
+Week 1 build to start before G0a, G0b and the beachhead decision. Nothing reaches a real customer
+before the Week 4 gates, and a failed G0a still means stop.
 
 ## When you finish a change
 

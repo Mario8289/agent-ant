@@ -1,8 +1,8 @@
 ---
 title: Decision Log
 status: draft
-version: 0.3
-last_updated: 2026-11-05
+version: 0.4
+last_updated: 2026-11-07
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
   - Ries — The Lean Startup (2011) — validated learning — verified
@@ -50,6 +50,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-007 | Python-first `uv` workspace monorepo, `agent_ant_*` naming | accepted | 2026-11-04 |
 | D-008 | Orchestration: LangGraph for the missed-call agent | accepted | 2026-11-05 |
 | D-009 | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted | 2026-11-05 |
+| D-010 | Start Week 1 build before G0a, G0b and the beachhead decision | accepted | 2026-11-07 |
 
 ## Entries
 
@@ -169,6 +170,25 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Source:** [adr/0002-llm-provider.md](./adr/0002-llm-provider.md)
 - **Reversible?:** cheap by design — that is the point of the decision.
 
+### D-010 — Start Week 1 build before G0a, G0b and the beachhead decision
+- **Date:** 2026-11-07
+- **Status:** accepted
+- **Context:** The plan says build work waits for the pre-sprint gates: G0a (6 Mom Test
+  interviews, #10), G0b (forwarding on Dad's real plan, #47) and the beachhead decision (#15).
+  None are done. G0c's spikes are built (#59, #60, #61, PR #65 pending merge). The founder wants to start coding and
+  will do the interviews and the questionnaire later.
+- **Decision:** Start Week 1 (#19, #18, #20, #21) now. Until #15 is decided, the working
+  assumption is **tradespeople in general** (carpenters, plumbers and similar), not one trade.
+  The gates are deferred, not dropped.
+- **Consequences:** Week 1 is persist-raw-event, signature-verified webhook, fixed-template SMS
+  and reply storage. None of it depends on the segment, so little is lost if the segment
+  changes. The risk carried: if G0a fails or G0b fails, Week 1 effort is wasted and the
+  telephony design may have to change. Deferral does not lift the other rules: no real customer
+  data before #16, nothing reaches a real customer before the Week 4 gates, and a failed G0a
+  still means stop and reconsider the wedge (00 §6).
+- **Source:** founder decision, 2026-11-07; [00-business-plan.md](./00-business-plan.md) §6
+- **Reversible?:** cheap — about one week of segment-agnostic plumbing.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -179,11 +199,14 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Open questions
 
-- Which beachhead segment (carpenters nationally or one region)? See issue #15.
+- Which beachhead segment (carpenters nationally or one region)? See issue #15. Deferred by D-010;
+  working assumption is tradespeople in general until then.
 - Which provider wins the Week 4 lock-in? Decide on the golden set and the DPA, at gate #29.
 
 ## Change history
 
+- **0.4 (2026-11-07)** — D-010 accepted: Week 1 build starts before G0a, G0b and the beachhead
+  decision, on the founder's say-so.
 - **0.3 (2026-11-05)** — D-008 and D-009 accepted on the founder's decision: LangGraph rather
   than plain steps, and a swappable LLM provider with Bedrock preferred and a DPA-backed lock
   before live traffic.
