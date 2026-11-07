@@ -1,8 +1,8 @@
 ---
 title: Execution Plan — what to do, in order
 status: draft
-version: 0.1
-last_updated: 2026-11-06
+version: 0.2
+last_updated: 2026-11-07
 sources:
   - 00-business-plan.md §6 (gates) and §7 (6-week sprint)
   - GitHub milestones: Pre-sprint gates, Week 1–6
@@ -31,7 +31,10 @@ Time budget: about 14 hours a week, roughly 2 hours a day ([00 §7](./00-busines
 - **G0b** (#47): forwarding works on Dad's real plan. Currently open. Build work waits for this, or for a logged decision to accept the risk.
 - **G0c** (#12): all five spikes pass.
 
-If G0a fails, stop and reconsider the wedge. Do not start Week 1.
+If G0a fails, stop and reconsider the wedge.
+
+**Update 2026-11-07 ([D-010](./06-decision-log.md)):** Week 1 starts before G0a, G0b and #15 are
+done, on the founder's decision. They are deferred, not dropped. If G0a fails later, stop.
 
 ### The five spikes (#12)
 
@@ -46,11 +49,11 @@ synthetic data only.
 | `spikes/04-structured-output` | 4 — Pydantic and repair loop | Messy text becomes a validated object; invalid output triggers a bounded repair |
 | `spikes/05-langgraph-branch` | 5 — StateGraph, interrupt, checkpointer | A synthetic message runs extract → validate → interrupt → approve, and resumes |
 
-Spike 1 is written, with tests not yet run. Start there.
+All five spikes are built (PR #65 for spike 5 pending merge).
 
 ## Week 1 — missed call triggers a text (product code starts here)
 
-Start only after the pre-sprint gates pass. Order matters: persist first, then process.
+Started early under [D-010](./06-decision-log.md), before the gates pass. Order matters: persist first, then process.
 
 | Order | Issue | Task |
 |---|---|---|
@@ -117,4 +120,5 @@ Nothing reaches a real customer before #16 is closed.
 
 ## Change history
 
+- **0.2 (2026-11-07)** — Week 1 starts before the gates (D-010); spikes marked built.
 - **0.1 (2026-11-06)** — first version, consolidated from the business plan and the milestones.
