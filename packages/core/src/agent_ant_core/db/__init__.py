@@ -1,5 +1,4 @@
-"""Database engine, models and idempotency helpers.
+"""Database models, sessions and idempotency helpers.
 
-Alembic migrations live in the repository-root ``migrations/`` directory and are introduced
-in Week 1 (issue #19).
+Alembic migrations live in the repository-root ``migrations/`` directory.
 """
