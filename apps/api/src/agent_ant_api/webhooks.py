@@ -5,10 +5,12 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from agent_ant_api.security import verified_twilio_form
+from agent_ant_api.sms import SmsSender, get_sms_sender, send_missed_call_sms
+from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.idempotency import persist_raw_event
 from agent_ant_core.db.session import get_sessionmaker
 
@@ -36,12 +38,16 @@ def get_session() -> Iterator[Session]:
 def missed_call(
     form: Annotated[dict[str, str], Depends(verified_twilio_form)],
     session: Annotated[Session, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    sms_sender: Annotated[SmsSender | None, Depends(get_sms_sender)],
+    background: BackgroundTasks,
 ) -> Response:
     """Persist the call, then answer fast.
 
     Persist before processing (rule 2): the raw event is committed before Twilio is told 200,
     so a crash later cannot lose the job. A retry of the same ``CallSid`` gets the same 200
-    but is not stored again, and only a first delivery should ever start follow-up work.
+    but is not stored again, and only a first delivery starts follow-up work (the text), so a
+    duplicate can never send a second SMS.
     """
     call_sid = form.get("CallSid")
     caller = form.get("From")
@@ -57,6 +63,11 @@ def missed_call(
         payload=form,
     )
     session.commit()
+
+    if inserted:
+        background.add_task(
+            send_missed_call_sms, sms_sender, settings.business_name, call_sid, caller
+        )
 
     # CallSid only: caller numbers are personal data and stay out of logs.
     logger.info("missed call %s: %s", call_sid, "stored" if inserted else "duplicate ignored")

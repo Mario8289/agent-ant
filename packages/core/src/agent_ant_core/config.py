@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     twilio_account_sid: str | None = None
     twilio_auth_token: SecretStr | None = None
     twilio_from_number: str | None = None
+    # Named in the auto-SMS so the text does not come from an unknown number (R2, D-011).
+    business_name: str | None = None
     # Twilio signs the exact URL it called. Behind a proxy or tunnel (ngrok) the URL this app
     # sees differs from the public one, so set the public base, e.g. https://abc.ngrok.app
     public_base_url: str | None = None
