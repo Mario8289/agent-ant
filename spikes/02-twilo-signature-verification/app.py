@@ -9,7 +9,6 @@ requests (and Twilio adds parameters without notice).
 import os
 
 from fastapi import FastAPI, Request, Response
-
 from signature import validate_signature
 
 # Synthetic default so the spike runs with no real credentials. The product

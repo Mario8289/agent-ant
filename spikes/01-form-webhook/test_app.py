@@ -1,12 +1,15 @@
 import xml.etree.ElementTree as ET
 
-from fastapi.testclient import TestClient
-
 from app import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-SYNTHETIC = {"CallSid": "CA00000000000000000000000000000000", "From": "+447000000000", "To": "+447000000001"}
+SYNTHETIC = {
+    "CallSid": "CA00000000000000000000000000000000",
+    "From": "+447000000000",
+    "To": "+447000000001",
+}
 
 
 def test_form_encoded_post_returns_twiml() -> None:

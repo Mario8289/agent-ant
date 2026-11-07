@@ -31,9 +31,7 @@ def compute_signature(url: str, params: dict[str, str], auth_token: str) -> str:
     return base64.b64encode(digest).decode()
 
 
-def validate_signature(
-    url: str, params: dict[str, str], signature: str, auth_token: str
-) -> bool:
+def validate_signature(url: str, params: dict[str, str], signature: str, auth_token: str) -> bool:
     """Return True when ``signature`` matches the recomputed value.
 
     Uses ``hmac.compare_digest`` so the comparison is constant-time and does not

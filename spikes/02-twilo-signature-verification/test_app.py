@@ -37,9 +37,8 @@
 
 import xml.etree.ElementTree as ET
 
-from fastapi.testclient import TestClient
-
 from app import AUTH_TOKEN, app
+from fastapi.testclient import TestClient
 from signature import compute_signature
 
 client = TestClient(app)
