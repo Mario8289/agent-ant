@@ -41,6 +41,10 @@ check: lint typecheck test
 db-up:
     docker compose -f infra/docker/docker-compose.yml up -d
 
+# Apply database migrations (uses DATABASE_URL)
+migrate:
+    uv run --all-packages alembic upgrade head
+
 db-down:
     docker compose -f infra/docker/docker-compose.yml down
 
