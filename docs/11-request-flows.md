@@ -1,0 +1,306 @@
+---
+title: Request Flows
+status: draft
+version: 0.1
+last_updated: 2026-11-08
+verified_against: 017d6fb
+---
+
+# 11 — Request Flows
+
+## Purpose
+
+What happens, in order, during one HTTP request to the API — which system calls which, what is
+written where, and where each step lives in the code. Written for two readers: you, while
+walking the code, and a cold agent starting in this repo.
+
+The business-level picture ("what is this system for") is the flowchart in
+[05-architecture-and-schema.md](./05-architecture-and-schema.md). This document is the
+wire-level companion: Twilio in, SQL out.
+
+Front matter `verified_against` is the commit these diagrams were last checked against. If the
+API source has moved since, distrust the diagrams before the code.
+
+## Start here
+
+| Question | Flow | Entry point |
+|---|---|---|
+| Someone rings and we miss it — what happens? | [Missed call: happy path](#missed-call-happy-path) | `webhooks.py::missed_call` |
+| Why doesn't a Twilio retry send a second text? | [Duplicate delivery](#duplicate-delivery) | `idempotency.py::persist_raw_event` |
+| The customer replies — what happens? | [SMS reply](#sms-reply) | `webhooks.py::sms_reply` |
+| What if the signature is wrong, or Twilio is down? | [Failure paths](#failure-paths) | `security.py`, `sms.py` |
+| What does a row actually look like? | [Row shapes](#row-shapes) | `models.py::RawEvent` |
+
+The rule these diagrams encode: **persist → commit → answer → then act.** Everything below is a
+consequence of that ordering (AGENTS.md rule 2).
+
+## Missed call: happy path
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Caller
+    participant P as Dad phone and carrier
+    participant T as Twilio
+    participant A as FastAPI missed-call route
+    participant DB as Postgres raw_events
+    participant BT as BackgroundTasks
+    participant TA as Twilio Messages API
+
+    C->>P: dials Dad's mobile
+    P->>P: not answered
+    P->>T: carrier forwards the call to the Twilio number
+    Note over P,T: R1 - forwarding is untested on Dad's real plan
+    T->>A: POST /webhooks/missed-call, form-encoded, CallSid and From
+    A->>A: security.verified_twilio_form
+    Note over A: 503 no auth token, 403 bad signature, 400 missing CallSid or From
+    A->>DB: INSERT ON CONFLICT DO NOTHING RETURNING id
+    DB-->>A: id returned, so inserted = True
+    A->>DB: COMMIT
+    A-->>T: 200 with TwiML - Say, then Hangup
+    T->>C: caller hears "we will send you a text shortly"
+    A->>BT: add_task send_missed_call_sms
+    Note over BT: runs after the response is sent
+    BT->>TA: messages.create with the fixed template
+    TA-->>C: SMS arrives from the Twilio number
+```
+
+**Why the order matters, step by step:**
+
+| Order | Step | What breaks if you move it |
+|---|---|---|
+| 1 | Verify signature | A forged POST becomes a stored job and an SMS to a stranger |
+| 2 | INSERT + `RETURNING id` | Without `RETURNING`, "was it new?" is a second race-prone query |
+| 3 | `COMMIT` before responding | Twilio is told "stored" while the row is still uncommitted; a crash loses it |
+| 4 | Respond `200` | Twilio retries anything that isn't a fast 2xx |
+| 5 | `add_task` after the response | A 10s Twilio send inside the request would blow the webhook timeout |
+| 6 | Send is wrapped in `try/except` | A send failure must never turn a successful store into a 5xx and a retry |
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| Route | `apps/api/src/agent_ant_api/webhooks.py::missed_call` |
+| Signature + form parsing | `apps/api/src/agent_ant_api/security.py::verified_twilio_form` |
+| Signing URL reconstruction | `apps/api/src/agent_ant_api/security.py::signing_url` |
+| Idempotent insert | `packages/core/src/agent_ant_core/db/idempotency.py::persist_raw_event` |
+| Transaction boundary | `webhooks.py::missed_call` — the `session.commit()` |
+| Session per request | `webhooks.py::get_session` → `db/session.py::get_sessionmaker` |
+| TwiML text | `webhooks.py::MISSED_CALL_TWIML` |
+| Sender factory | `apps/api/src/agent_ant_api/sms.py::get_sms_sender` |
+| Template text | `apps/api/src/agent_ant_api/sms.py::build_missed_call_message` |
+| Background send | `apps/api/src/agent_ant_api/sms.py::send_missed_call_sms` |
+
+### Twilio field → column
+
+| Twilio form field | Becomes | Column |
+|---|---|---|
+| `CallSid` | idempotency key | `raw_events.idempotency_key` |
+| `From` | caller | `raw_events.caller_number` |
+| all fields, untouched | raw payload | `raw_events.payload` (JSONB) |
+| — | literal | `raw_events.source = 'voice_call'` |
+| — | server clock | `raw_events.received_at` |
+| — | no parent | `related_event_id = NULL` |
+
+`To` is not promoted to a column. It only matters once there is more than one Twilio number;
+until then it lives in `payload`. Adding a column is a migration, so it waits until something
+queries it.
+
+## Duplicate delivery
+
+Twilio delivers **at least once**. The same `CallSid` can arrive twice for ordinary reasons: the
+200 was lost in transit, the handler was slower than the timeout, or the process died between
+`COMMIT` and the response.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant T as Twilio
+    participant A as FastAPI missed-call route
+    participant DB as Postgres raw_events
+    participant BT as BackgroundTasks
+
+    T->>A: POST again with the same CallSid
+    A->>A: signature check passes
+    A->>DB: INSERT ON CONFLICT DO NOTHING RETURNING id
+    DB-->>A: no row, so inserted = False
+    A->>DB: COMMIT
+    A-->>T: 200 with the same TwiML
+    Note over BT: add_task sits inside if inserted, so no second SMS
+```
+
+Two details worth knowing:
+
+- **Concurrent retries.** If both requests are in flight, the second `INSERT` blocks briefly on
+  the first transaction's lock, then sees the conflict and returns zero rows. Postgres decides;
+  no Python-level check-then-insert that could race.
+- **Both requests return 200.** The duplicate is not an error. Erroring would make Twilio
+  retry harder, which is the opposite of what you want.
+
+The guarantee is **at most one text per call, possibly zero** — not exactly one. A send that
+fails or a process that dies after `COMMIT` leaves the caller with nothing. That gap is the
+outbox in Week 5 (#34).
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| The unique key | `models.py::RawEvent.idempotency_key` (`UNIQUE`) |
+| Conflict handling | `idempotency.py::persist_raw_event` — `on_conflict_do_nothing` |
+| The gate on the send | `webhooks.py::missed_call` — `if inserted:` |
+| Race test | `apps/api/tests/test_missed_call_webhook.py::test_retry_does_not_send_a_second_text` |
+
+Dedupe is per **call**, not per caller. A customer who rings twice gets two texts, because those
+are two events, not one delivered twice.
+
+## SMS reply
+
+A second, independent webhook. Nothing in this app triggers it — Twilio posts it when the
+customer replies to the auto-SMS, seconds or hours later. The only link between the two requests
+is the database.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Caller
+    participant T as Twilio
+    participant A as FastAPI sms-reply route
+    participant DB as Postgres raw_events
+
+    C->>T: replies to the SMS
+    T->>A: POST /webhooks/sms-reply, form-encoded, MessageSid and From
+    A->>A: security.verified_twilio_form
+    A->>DB: SELECT id of the newest voice_call for the From number
+    DB-->>A: 7, or NULL when there is no missed call
+    A->>DB: INSERT sms_reply with the whole form and related_event_id
+    A->>DB: COMMIT
+    A-->>T: 200 with an empty body
+```
+
+The lookup, which is a heuristic and not a validation:
+
+```sql
+SELECT id
+FROM raw_events
+WHERE source = 'voice_call'
+  AND caller_number = '+447700900123'
+ORDER BY received_at DESC, id DESC
+LIMIT 1;
+```
+
+| Outcome | Stored as | Response |
+|---|---|---|
+| Matching call found | `related_event_id = 7` | 200 |
+| No matching call | `related_event_id = NULL` | 200 |
+| Duplicate `MessageSid` | not stored | 200 |
+| Bad signature | not stored | 403 |
+
+Nothing is rejected for being unlinked. Losing the message would be worse than losing the
+association, and the body is needed for Week 2's extraction either way.
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| Route | `webhooks.py::sms_reply` |
+| Related-call lookup | `webhooks.py::sms_reply` — the `select(RawEvent.id)` |
+| Insert | `idempotency.py::persist_raw_event` |
+| Self-referencing FK | `models.py::RawEvent.related_event_id` |
+| Migration | `migrations/versions/…0002…` (adds `related_event_id`) |
+
+### Twilio field → column
+
+| Twilio form field | Becomes | Column |
+|---|---|---|
+| `MessageSid` | idempotency key | `raw_events.idempotency_key` |
+| `From` | caller | `raw_events.caller_number` |
+| `Body`, `To`, `NumMedia`, … | untouched | `raw_events.payload` |
+| — | literal | `raw_events.source = 'sms_reply'` |
+| — | lookup result | `raw_events.related_event_id` |
+
+`Body` is not its own column: nothing queries it yet, and Twilio's field set changes per message,
+so JSONB absorbs both problems. Access it as `row.payload["Body"]`, or `payload->>'Body'` in SQL.
+
+## Failure paths
+
+```mermaid
+flowchart TD
+    IN[POST arrives] --> TOK{Auth token configured?}
+    TOK -->|no| R503[503 nothing stored]
+    TOK -->|yes| SIG{Signature valid?}
+    SIG -->|no| R403[403 nothing stored]
+    SIG -->|yes| FIELDS{CallSid and From present?}
+    FIELDS -->|no| R400[400 nothing stored]
+    FIELDS -->|yes| INS[INSERT ON CONFLICT, then COMMIT]
+    INS --> TWIML[200 with TwiML]
+    TWIML --> NEW{inserted?}
+    NEW -->|no| QUIET[no SMS, duplicate ignored]
+    NEW -->|yes| SEND[send_missed_call_sms in background]
+    SEND --> CFG{sender configured?}
+    CFG -->|no| WARN[warning logged, no SMS]
+    CFG -->|yes| API[Twilio Messages API, 10s timeout]
+    API -->|ok| SENT[SMS sent]
+    API -->|error or timeout| FAIL[exception logged and swallowed]
+    FAIL --> NONE[caller gets nothing, no retry until #34]
+```
+
+| Failure | Status | Stored | SMS | Twilio retries? |
+|---|---|---|---|---|
+| `TWILIO_AUTH_TOKEN` unset | 503 | no | no | yes — config error, not transient |
+| Missing/wrong signature | 403 | no | no | yes |
+| Missing `CallSid` or `From` | 400 | no | no | no |
+| Duplicate `CallSid` | 200 | already there | no | no |
+| Sender not configured | 200 | yes | no | no |
+| Twilio API error or timeout | 200 | yes | no | no |
+
+The last three rows are the important ones: the webhook succeeds even when the text does not.
+That is deliberate — a 5xx would make Twilio retry a call that is already stored.
+
+Everything logged on these paths is a SID. Caller numbers are personal data and stay out of
+logs (AGENTS.md rule 5).
+
+## Row shapes
+
+What the table looks like after one missed call and one reply:
+
+```mermaid
+flowchart LR
+    A["id 1<br/>source voice_call<br/>idempotency_key CA0000...<br/>caller_number +447700900123<br/>related_event_id NULL"]
+    B["id 2<br/>source sms_reply<br/>idempotency_key SM0000...<br/>caller_number +447700900123<br/>related_event_id 1"]
+    A -->|answers| B
+```
+
+One relation, self-referencing: `sms_reply.related_event_id → voice_call.id`. A voice call never
+points at anything. A reply may point at nothing.
+
+`related_event_id` has no `NOT NULL` and no cascade rules beyond the FK, because the link is a
+best guess, not an invariant.
+
+## Anti-patterns
+
+- **Reading these as "exactly one text per call".** It is at most one, possibly zero. See
+  [Failure paths](#failure-paths).
+- **Adding per-caller suppression to the dedupe key.** "Same event twice" and "two events close
+  together" are different questions. Suppression by number is a product decision, not
+  idempotency.
+- **Putting the LLM call in the webhook.** It belongs after the 200, in a background task, and
+  its output is validated before anything is stored as a job.
+- **Logging the caller number or the message body** to make debugging easier. SIDs only.
+- **Trusting `related_event_id` as proof the reply belongs to that call.** It is the newest call
+  from the same number, nothing more.
+
+## Open questions
+
+- **STOP / HELP.** Both arrive at `/webhooks/sms-reply` and are currently stored as ordinary
+  replies. They must not reach extraction. Needs an issue before live traffic.
+- **Delivery status callbacks.** Without them, "text never arrived" and "text ignored" look
+  identical, so H6 (reply rate) cannot separate the two. Needs an issue before Week 4.
+- **Reply lookup index.** `(source, caller_number, received_at DESC)` when the table grows.
+  Sequential scan is fine at MVP volume.
+- **Outbox.** Turns "at most one, possibly zero" into "at least once" (#34, Week 5).
+
+## Change history
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 2026-11-08 | First version: missed call, duplicate delivery, SMS reply, failure paths, row shapes |

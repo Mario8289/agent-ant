@@ -11,7 +11,8 @@ product is a **missed-call → booked-job** assistant for sole traders. The only
 `missed_call`.
 
 **Read first:** `docs/00-business-plan.md` (why), `docs/05-architecture-and-schema.md`
-(how), `docs/06-decision-log.md` (what was decided).
+(how), `docs/06-decision-log.md` (what was decided), `docs/11-request-flows.md` (what
+happens on each webhook, step by step).
 
 ## Non-negotiable rules
 
@@ -87,6 +88,8 @@ before the Week 4 gates, and a failed G0a still means stop.
 - `just check` passes.
 - Docs updated if behaviour or decisions changed; new decisions get an entry in
   `docs/06-decision-log.md`.
+- If you changed a route, its ordering, or the `raw_events` schema, update
+  `docs/11-request-flows.md`.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - Each closed issue gets a resolution comment linking the PR and the files it delivered.
   `Closes #<n>` closes silently and leaves no evidence on the issue.

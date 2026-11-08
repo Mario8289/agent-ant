@@ -45,6 +45,9 @@ flowchart TD
 return 200 quickly. Twilio retries on timeout, so a slow handler produces duplicates; a
 crashed handler loses the job unless the raw event is already stored.
 
+Request-level flows (what happens per HTTP request, step by step, with code anchors):
+[11-request-flows.md](./11-request-flows.md).
+
 ## Schema
 
 ```python
