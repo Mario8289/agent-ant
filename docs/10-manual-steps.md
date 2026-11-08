@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.10
+version: 0.11
 last_updated: 2026-11-08
 ---
 
@@ -129,6 +129,32 @@ Select the number, open the voice configuration tab, then **Edit configuration d
 top right. The values are read-only until that button is pressed. The messaging tab holds
 **A message comes in**.
 
+### Setting both webhooks through the API
+
+`just repoint` runs `scripts/set_twilio_webhooks.py`, which writes both endpoints from
+`PUBLIC_BASE_URL` and prints the before/after values. It exists because a quick tunnel rotates
+its hostname and because the two webhooks are separate fields that are easy to half-update.
+
+They are properties of the phone number resource, not separate objects:
+
+- `voice_url` + `voice_method` (`POST`) for `<PUBLIC_BASE_URL>/webhooks/missed-call`
+- `sms_url` + `sms_method` (`POST`) for `<PUBLIC_BASE_URL>/webhooks/sms-reply`
+
+The same two fields the console form edits, so the API and the UI can be used interchangeably.
+Equivalent request for one of them:
+
+```bash
+curl -X POST \
+  "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/IncomingPhoneNumbers/$NUMBER_SID.json" \
+  --data-urlencode "VoiceUrl=$PUBLIC_BASE_URL/webhooks/missed-call" \
+  --data-urlencode "VoiceMethod=POST" \
+  -u "$TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN"
+```
+
+Two gotchas: `TWILIO_FROM_NUMBER` must be E.164 with the leading `+`, or the number lookup
+returns nothing and the update silently does nothing; and the URL written here must match the
+app's `PUBLIC_BASE_URL` exactly, because Twilio signs the URL it called.
+
 ### When the tunnel URL changes
 
 A quick tunnel (`cloudflared` with no account, or free ngrok) gets a new hostname on every
@@ -136,10 +162,13 @@ restart, and the webhook breaks silently: Twilio keeps calling the dead URL. All
 must change together, or the app answers 403 because the signature no longer matches.
 
 1. Start the tunnel again and copy the new `https://...` base URL.
-2. Update `PUBLIC_BASE_URL` in `.env` (no trailing slash) and restart `just dev`.
-3. Re-point the number's webhooks at the new base: **A call comes in** and **A message comes
-   in**, as described above. Use **Monitor -> Logs -> Errors** in the console to confirm Twilio
-   is reaching the app, not a stale hostname.
+2. Update `PUBLIC_BASE_URL` in `.env` (no trailing slash), then run `just repoint` and restart
+   `just dev`.
+3. `just repoint` sets **A call comes in** and **A message comes in** from that one value, and
+   prints before/after so you can see it worked. Doing it by hand instead is two fields on the
+   same console page (see above); missing one leaves a working call path with a dead reply path.
+   Use **Monitor -> Logs -> Errors** in the console to confirm Twilio is reaching the app, not a
+   stale hostname.
 
 Symptoms of forgetting step 2 or 3: Twilio errors in the console with no request in the app
 log (dead URL), or a `403 Invalid Twilio signature` in the app log (stale
@@ -152,6 +181,8 @@ before a real customer's call reaches this service.
 
 ## Change history
 
+- **0.11 (2026-11-08)** — `just repoint` sets both webhooks from `PUBLIC_BASE_URL`; the
+  API method is now documented next to the console steps.
 - **0.10 (2026-11-08)** — reply webhook verified with a real reply; that entry is done,
   closing the Week 1 loop.
 - **0.9 (2026-11-08)** — real call and real SMS verified; the voice-webhook entry is done, and

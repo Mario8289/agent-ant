@@ -34,6 +34,10 @@ eval *args:
 dev:
     uv run --package agent-ant-api uvicorn agent_ant_api.main:app --reload --app-dir apps/api/src
 
+# Point both Twilio webhooks at PUBLIC_BASE_URL (run after the tunnel URL changes)
+repoint:
+    uv run --all-packages python scripts/set_twilio_webhooks.py
+
 # Everything CI runs
 check: lint typecheck test
 
