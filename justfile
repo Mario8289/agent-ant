@@ -32,7 +32,7 @@ eval *args:
 
 # Run the API locally
 dev:
-    uv run --all-packages --package agent-ant-api uvicorn agent_ant_api.main:app --reload --app-dir apps/api/src
+    uv run --package agent-ant-api uvicorn agent_ant_api.main:app --reload --app-dir apps/api/src
 
 # Everything CI runs
 check: lint typecheck test
