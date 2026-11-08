@@ -25,7 +25,11 @@ def build_payload(url: str, params: dict[str, str]) -> str:
 
 
 def compute_signature(url: str, params: dict[str, str], auth_token: str) -> str:
-    """Replicate the signature Twilio attaches to a request (the signing side)."""
+    """Replicate the signature Twilio attaches to a request (the signing side).
+    digest     type: bytes -> b'/\xf3\x87\xe5\x8c\xa5,>MD\xa2\xe5\xb5\xda\xb0J\xf4\xb4\x06u'
+    b64encode  type: bytes -> b'L/OH5YylLD5NRKLltdqwSvS0BnU='
+    .decode()  type: str -> 'L/OH5YylLD5NRKLltdqwSvS0BnU='
+    """
     payload = build_payload(url, params)
     digest = hmac.new(auth_token.encode(), payload.encode(), hashlib.sha1).digest()
     return base64.b64encode(digest).decode()

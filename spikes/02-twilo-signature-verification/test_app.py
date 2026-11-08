@@ -18,7 +18,7 @@
 #
 #   1. Text encode/decode  (.encode() / .decode())  -- changes the TYPE
 #      str <-> bytes. Crypto needs bytes, so the token and payload are
-#      .encode()d (UTF-8) before hashing.
+#      .encode()d (UTF-8) before hashing. (A byte is an unsigned 8-bit integer, 0-255.)
 #
 #   2. Base64 encode       (base64.b64encode)        -- changes the FORMAT
 #      raw binary -> printable ASCII. Makes bytes header-safe. Output is still

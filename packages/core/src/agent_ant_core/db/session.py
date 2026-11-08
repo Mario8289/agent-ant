@@ -19,4 +19,7 @@ def get_engine() -> Engine:
 
 
 def get_sessionmaker() -> sessionmaker[Session]:
+    # A sessionmaker is a lightweight factory: it holds the engine and the config. Creating
+    # one per request is cheap and avoids shared mutable state; the engine is the expensive
+    # part and it is cached in get_engine().
     return sessionmaker(get_engine(), expire_on_commit=False)

@@ -6,6 +6,11 @@ from typing import Literal
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Settings is the app's single, typed view of its configuration.
+# Everything the app needs from outside — the database URL,
+# Twilio credentials, the business name, the public URL — is read
+# there, once, and turned into a validated Python object.
+
 
 class Settings(BaseSettings):
     """Runtime configuration.

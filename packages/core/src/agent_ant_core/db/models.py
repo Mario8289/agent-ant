@@ -14,11 +14,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Explicit constraint names keep Alembic revisions deterministic across machines.
 NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
+    "ix": "ix_%(column_0_label)s",  # index
+    "uq": "uq_%(table_name)s_%(column_0_name)s",  # unique constraint
+    "ck": "ck_%(table_name)s_%(constraint_name)s",  # check constraint
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",  # foreign key
+    "pk": "pk_%(table_name)s",  # primary key
 }
 
 EventSource = Literal["voice_call", "sms_reply"]
@@ -44,7 +44,8 @@ class RawEvent(Base):
     __table_args__ = (
         CheckConstraint("source IN ('voice_call', 'sms_reply')", name="source_valid"),
     )
-
+    # Mapped[T] is the Python type pyright sees (T | None also sets nullable); mapped_column() is the
+    # SQL type. Nothing cross-checks the two, so keep them consistent by hand.
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     idempotency_key: Mapped[str] = mapped_column(Text, unique=True)
     source: Mapped[str] = mapped_column(Text)
