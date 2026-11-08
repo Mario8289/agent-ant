@@ -64,6 +64,11 @@ Started early under [D-010](./06-decision-log.md), before the gates pass. Order 
 
 **Week 1 done when:** a missed call triggers the template text, and the reply is stored.
 
+**Done 2026-11-08**, verified end to end on a real phone rather than with fixtures: a call to the
+Twilio number was stored (`CA28eb84...`), the template SMS was delivered (`SMef63a3...`), and
+the reply was stored and linked to that call (`SM5f172a...`, `related_event_id` = the call row).
+Deferred from this week: `HELP`/`STOP` handling (#72), persisting outbound messages (#73).
+
 ## Week 2 — messy text becomes a job record
 
 | Order | Issue | Task |
