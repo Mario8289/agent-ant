@@ -1,8 +1,8 @@
 ---
 title: Decision Log
 status: draft
-version: 0.5
-last_updated: 2026-11-07
+version: 0.6
+last_updated: 2026-11-09
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
   - Ries — The Lean Startup (2011) — validated learning — verified
@@ -52,6 +52,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-009 | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted | 2026-11-05 |
 | D-010 | Start Week 1 build before G0a, G0b and the beachhead decision | accepted | 2026-11-07 |
 | D-011 | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
+| D-012 | Audit trail: two tables (`llm_output_audits` + `human_edits`), `job_id` deferred | accepted | 2026-11-09 |
 
 ## Entries
 
@@ -215,6 +216,25 @@ here as a single entry. Decisions that need more space get a full ADR in
   Twilio alphanumeric sender ID and UK porting guidelines
 - **Reversible?:** cheap — the sender is a setting and the wording is one template.
 
+### D-012 — Audit trail: two tables, `job_id` deferred
+- **Date:** 2026-11-09
+- **Status:** accepted
+- **Context:** R6 (silent LLM drift) needs every extraction and correction logged (#24).
+  The schema sketch in doc 05 shows a single `LLMOutputAudit` model with `human_edited` and
+  `edit_diff` inline, and a `job_id` — but the `job_records` table it points at does not exist
+  yet (that is #23).
+- **Decision:** Two tables. `llm_output_audits` is an immutable snapshot keyed to
+  `raw_events.id` (which exists today) with a nullable `job_id` whose foreign key is added in
+  #23. `human_edits` holds one row per correction, linked to `llm_output_audits.id`, with the
+  diff as JSONB (`field -> {"before", "after"}`). `human_edited` is derived from a
+  `human_edits` row existing, not stored. `edit_diff` is JSONB, not a string, so the edit rate
+  is queryable.
+- **Consequences:** The audit is testable and useful now, before any job table exists.
+  Diverges from the single-model sketch in doc 05 (updated in place). `job_id` gains a foreign
+  key in a later migration, after #23 creates `job_records`.
+- **Source:** [05-architecture-and-schema.md](./05-architecture-and-schema.md) R6; issue #24
+- **Reversible?:** cheap — tables are new and empty.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -231,6 +251,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.6 (2026-11-09)** — D-012 accepted: audit trail is two tables (`llm_output_audits` +
+  `human_edits`) with `job_id` deferred until `job_records` exists (#23).
 - **0.5 (2026-11-07)** — D-011 accepted: auto-SMS sent from the Twilio number with the business
   name in the template; revisit on a low reply rate.
 - **0.4 (2026-11-07)** — D-010 accepted: Week 1 build starts before G0a, G0b and the beachhead
