@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.10
+version: 0.12
 last_updated: 2026-11-08
 ---
 
@@ -46,16 +46,26 @@ Blocks: the missed-call text actually reaching a phone (#20).
 prototype only uses synthetic data and test calls. Tracked in
 [#72](https://github.com/Mario8289/agent-ant/issues/72), needed before the Week 4 gates.
 
-### LLM credentials for Week 2
-Blocks: the extraction agent (#22, #23). Nothing runs without a provider.
+### LLM credentials for Week 2 — Bedrock
+Blocks: the extraction agent (#22, #23). Nothing runs without a provider. Bedrock is the Week 2
+provider (D-009): `eu-west-2` (London), single-region inference.
 
-- [ ] Bedrock (the default, D-009): in the AWS console, region **eu-west-2 (London)**, open
-  Bedrock -> Model access and request access to the model chosen for #22. Access is not
-  instant on some models, so do this early.
-- [ ] Set `LLM_PROVIDER=bedrock` and `LLM_MODEL` in `.env`. Bedrock uses the AWS credential
-  chain (an AWS profile or access keys in the environment), so `LLM_API_KEY` stays empty. Check
-  the chosen model is offered in `eu-west-2`; use single-region inference, not a cross-region
-  profile.
+- [ ] AWS account with billing enabled. Bedrock is not covered by the free tier, and the account
+  holder is who the DPA attaches to. Set a budget alarm before the first call (a few pounds a
+  month is enough at this volume).
+- [ ] Create an IAM user for local development rather than using root, attach the policy in
+  **Reference -> Bedrock IAM policy**, then:
+  `aws configure --profile agent-ant` (region `eu-west-2`). Credentials stay in
+  `~/.aws/credentials`, never in the repo or `.env`.
+- [ ] In the console, region **eu-west-2**, open Bedrock -> **Model access** and request the
+  model chosen for #22. Anthropic models ask for a use case and can take days; Amazon's models
+  are usually instant. A model listed in `us-east-1` is not necessarily offered in London.
+- [ ] Set `LLM_PROVIDER=bedrock`, `LLM_MODEL=<id>` and `AWS_PROFILE=agent-ant` in `.env`;
+  `LLM_API_KEY` stays empty. Use the plain model id, not an `eu.` inference profile, unless the
+  model is only offered that way — a cross-region profile can route outside the UK.
+- [ ] Run `just check-llm`. It prints the models the region actually offers, then sends one
+  prompt to `LLM_MODEL` and prints the reply, tokens and latency. It stops before the call with
+  a specific message if credentials, region or model access are wrong.
 - [ ] Synthetic data only until the Week 4 DPA gate (#16, R4). Do not send Dad's real
   customers' messages to any provider before then.
 
@@ -129,6 +139,32 @@ Select the number, open the voice configuration tab, then **Edit configuration d
 top right. The values are read-only until that button is pressed. The messaging tab holds
 **A message comes in**.
 
+### Setting both webhooks through the API
+
+`just repoint` runs `scripts/set_twilio_webhooks.py`, which writes both endpoints from
+`PUBLIC_BASE_URL` and prints the before/after values. It exists because a quick tunnel rotates
+its hostname and because the two webhooks are separate fields that are easy to half-update.
+
+They are properties of the phone number resource, not separate objects:
+
+- `voice_url` + `voice_method` (`POST`) for `<PUBLIC_BASE_URL>/webhooks/missed-call`
+- `sms_url` + `sms_method` (`POST`) for `<PUBLIC_BASE_URL>/webhooks/sms-reply`
+
+The same two fields the console form edits, so the API and the UI can be used interchangeably.
+Equivalent request for one of them:
+
+```bash
+curl -X POST \
+  "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/IncomingPhoneNumbers/$NUMBER_SID.json" \
+  --data-urlencode "VoiceUrl=$PUBLIC_BASE_URL/webhooks/missed-call" \
+  --data-urlencode "VoiceMethod=POST" \
+  -u "$TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN"
+```
+
+Two gotchas: `TWILIO_FROM_NUMBER` must be E.164 with the leading `+`, or the number lookup
+returns nothing and the update silently does nothing; and the URL written here must match the
+app's `PUBLIC_BASE_URL` exactly, because Twilio signs the URL it called.
+
 ### When the tunnel URL changes
 
 A quick tunnel (`cloudflared` with no account, or free ngrok) gets a new hostname on every
@@ -136,10 +172,13 @@ restart, and the webhook breaks silently: Twilio keeps calling the dead URL. All
 must change together, or the app answers 403 because the signature no longer matches.
 
 1. Start the tunnel again and copy the new `https://...` base URL.
-2. Update `PUBLIC_BASE_URL` in `.env` (no trailing slash) and restart `just dev`.
-3. Re-point the number's webhooks at the new base: **A call comes in** and **A message comes
-   in**, as described above. Use **Monitor -> Logs -> Errors** in the console to confirm Twilio
-   is reaching the app, not a stale hostname.
+2. Update `PUBLIC_BASE_URL` in `.env` (no trailing slash), then run `just repoint` and restart
+   `just dev`.
+3. `just repoint` sets **A call comes in** and **A message comes in** from that one value, and
+   prints before/after so you can see it worked. Doing it by hand instead is two fields on the
+   same console page (see above); missing one leaves a working call path with a dead reply path.
+   Use **Monitor -> Logs -> Errors** in the console to confirm Twilio is reaching the app, not a
+   stale hostname.
 
 Symptoms of forgetting step 2 or 3: Twilio errors in the console with no request in the app
 log (dead URL), or a `403 Invalid Twilio signature` in the app log (stale
@@ -150,8 +189,49 @@ The permanent fix is a named Cloudflare tunnel on a domain, which keeps one host
 restarts, or deploying the API. Neither is needed while the data is synthetic; both are needed
 before a real customer's call reaches this service.
 
+### Bedrock IAM policy
+
+Minimum policy for local development. `Resource: "*"` is acceptable for synthetic data; at the
+Week 4 lock-in (#29) narrow the invoke statements to the chosen model's ARN.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListModels",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:ListFoundationModels",
+        "bedrock:GetFoundationModel",
+        "bedrock:ListInferenceProfiles",
+        "bedrock:GetInferenceProfile"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "InvokeModels",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+`InvokeModel` also covers the `Converse` API that `just check-llm` and the Week 2 adapter use.
+Model access is a separate grant from IAM: the policy lets the user call Bedrock, but each
+model still has to be enabled in **Model access** for that region.
+
 ## Change history
 
+- **0.12 (2026-11-09)** — restored `just repoint` (the recipe, script and API documentation
+  were dropped from the #75 squash merge); `just check-llm` documented alongside it.
+- **0.11 (2026-11-08)** — LLM entry rewritten as executable Bedrock steps (IAM user, model
+  access, region, `just check-llm`); the IAM policy is under **Reference**.
 - **0.10 (2026-11-08)** — reply webhook verified with a real reply; that entry is done,
   closing the Week 1 loop.
 - **0.9 (2026-11-08)** — real call and real SMS verified; the voice-webhook entry is done, and
