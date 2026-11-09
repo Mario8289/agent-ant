@@ -8,7 +8,17 @@ replayed from here if processing fails.
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, MetaData, Text, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    MetaData,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -56,4 +66,48 @@ class RawEvent(Base):
     related_event_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("raw_events.id"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LLMOutputAudit(Base):
+    """One extraction attempt, logged verbatim for drift monitoring (R6).
+
+    Written on every extraction, valid or not, so a silent quality drop shows up as a change in
+    the validated rate or the edit rate rather than a surprise. ``raw_output`` is the model's
+    text (JSON when the model returned structured output), stored as-is, including malformed
+    output that failed validation.
+
+    ``raw_event_id`` anchors the row to the inbound event it ran over, which exists today.
+    ``job_id`` points at the ``job_records`` row it produced, but that table does not exist yet
+    (#23), so the column is nullable and its foreign key is added when the table lands.
+    """
+
+    __tablename__ = "llm_output_audits"
+    __table_args__ = (CheckConstraint("repair_attempts >= 0", name="repair_attempts_nonnegative"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    raw_event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_events.id"))
+    job_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    model: Mapped[str] = mapped_column(Text)
+    prompt_version: Mapped[str] = mapped_column(Text)
+    raw_output: Mapped[str] = mapped_column(Text)
+    validated: Mapped[bool] = mapped_column(Boolean)
+    repair_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class HumanEdit(Base):
+    """One human correction to an extraction, for edit-rate monitoring (R6).
+
+    ``edit_diff`` records only the fields that changed, as ``field -> {"before": ..., "after":
+    ...}``. A row existing here is what makes an output count as human-edited. The sketch in
+    doc 05 folds ``human_edited``/``edit_diff`` onto the audit row; a separate table keeps one
+    extraction immutable and lets a single output be corrected more than once.
+    """
+
+    __tablename__ = "human_edits"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    llm_output_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("llm_output_audits.id"))
+    edit_diff: Mapped[dict[str, dict[str, str | None]]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

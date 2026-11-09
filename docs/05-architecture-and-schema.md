@@ -92,6 +92,13 @@ class LLMOutputAudit(BaseModel):
     created_at: datetime
 ```
 
+> **DB realisation (D-012).** This model is split across two tables: `llm_output_audits`
+> (the immutable extraction snapshot: `model`, `prompt_version`, `raw_output`, `validated`,
+> `repair_attempts`, keyed to `raw_events.id`, with a nullable `job_id` whose foreign key is
+> added in #23) and `human_edits` (one row per correction, linked to `llm_output_audits.id`,
+> with `edit_diff` as JSONB rather than a string). `human_edited` is derived — a `human_edits`
+> row exists for that output — instead of stored.
+
 ## Design decisions
 
 | Decision | Choice | Source / reason |
