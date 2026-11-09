@@ -13,12 +13,14 @@ from agent_ant_core.llm.extraction import (
     extract_job,
     strip_code_fence,
 )
+from agent_ant_core.llm.provider import build_llm
 
 __all__ = [
     "DEFAULT_MAX_REPAIRS",
     "LLM",
     "ExtractionResult",
     "JobExtraction",
+    "build_llm",
     "extract_job",
     "strip_code_fence",
 ]
