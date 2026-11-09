@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     llm_provider: str | None = None
     llm_model: str | None = None
     llm_api_key: SecretStr | None = None
+    # Bedrock authenticates through the AWS credential chain, not an API key. The profile is a
+    # setting because pydantic-settings reads .env without exporting it to os.environ, and boto3
+    # only looks at the environment; passing the name here makes AWS_PROFILE in .env work.
+    aws_region: str = "eu-west-2"
+    aws_profile: str | None = None
 
 
 @lru_cache
