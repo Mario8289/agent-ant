@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.6
+version: 0.7
 last_updated: 2026-11-09
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -53,6 +53,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-010 | Start Week 1 build before G0a, G0b and the beachhead decision | accepted | 2026-11-07 |
 | D-011 | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
 | D-012 | Audit trail: two tables (`llm_output_audits` + `human_edits`), `job_id` deferred | accepted | 2026-11-09 |
+| D-013 | `job_records` table + background extraction; the approval interrupt stays Week 4 | accepted | 2026-11-09 |
 
 ## Entries
 
@@ -235,6 +236,27 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Source:** [05-architecture-and-schema.md](./05-architecture-and-schema.md) R6; issue #24
 - **Reversible?:** cheap — tables are new and empty.
 
+### D-013 — `job_records` table + background extraction; the approval interrupt stays Week 4
+- **Date:** 2026-11-09
+- **Status:** accepted
+- **Context:** With #22/#23/#24 merged, the pieces existed separately but nothing joined them:
+  there was no `job_records` table, the graph was not connected to the webhook, and no audit row
+  was ever written. Week 2's "done when" (a reply becomes a validated record *with an audit row*)
+  was therefore still unmet.
+- **Decision:** Add a `job_records` table mirroring the `JobRecord` contract, with a unique
+  `idempotency_key` (the reply's `MessageSid`) and a `raw_event_id` foreign key. The SMS-reply
+  webhook schedules a background task (`extract_reply`) that runs `process_reply`: extract, then
+  persist a `captured` job plus an audit row (or the audit row alone on failure). The
+  `llm_output_audits.job_id` foreign key deferred in D-012 is now added. The LangGraph
+  `interrupt()` approval path is deliberately not wired: that is the Week 4 dashboard, so a valid
+  extraction is stored `captured` and waits.
+- **Consequences:** A synthetic reply now becomes a captured job plus an audit row end to end.
+  The Bedrock adapter is still absent (`get_llm` returns None), so extraction is skipped until
+  credentials exist (`docs/10`). `build_agent` in `graph.py` remains for the Week 4 approval path.
+- **Source:** [05-architecture-and-schema.md](./05-architecture-and-schema.md) §Schema;
+  [09-execution-plan.md](./09-execution-plan.md) Week 2 "done when"; D-008, D-012
+- **Reversible?:** cheap — tables are new; the background-task wiring is a small seam.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -251,6 +273,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.7 (2026-11-09)** — D-013 accepted: `job_records` table and background extraction wire a
+  reply into a captured job + audit row; the approval interrupt stays Week 4.
 - **0.6 (2026-11-09)** — D-012 accepted: audit trail is two tables (`llm_output_audits` +
   `human_edits`) with `job_id` deferred until `job_records` exists (#23).
 - **0.5 (2026-11-07)** — D-011 accepted: auto-SMS sent from the Twilio number with the business

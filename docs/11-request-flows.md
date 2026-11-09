@@ -1,9 +1,9 @@
 ---
 title: Request Flows
 status: draft
-version: 0.1
-last_updated: 2026-11-08
-verified_against: 017d6fb
+version: 0.2
+last_updated: 2026-11-09
+verified_against: 1a432df
 ---
 
 # 11 — Request Flows
@@ -155,9 +155,10 @@ are two events, not one delivered twice.
 
 ## SMS reply
 
-A second, independent webhook. Nothing in this app triggers it — Twilio posts it when the
-customer replies to the auto-SMS, seconds or hours later. The only link between the two requests
-is the database.
+A second, independent webhook. Twilio posts it when the customer replies to the auto-SMS,
+seconds or hours later. The only link between the two requests is the database. Storing the
+reply is what triggers extraction: a background task reads the stored body and files a job
+record (Week 2).
 
 ```mermaid
 sequenceDiagram
@@ -166,6 +167,8 @@ sequenceDiagram
     participant T as Twilio
     participant A as FastAPI sms-reply route
     participant DB as Postgres raw_events
+    participant BG as BackgroundTasks
+    participant JR as job_records + llm_output_audits
 
     C->>T: replies to the SMS
     T->>A: POST /webhooks/sms-reply, form-encoded, MessageSid and From
@@ -175,6 +178,13 @@ sequenceDiagram
     A->>DB: INSERT sms_reply with the whole form and related_event_id
     A->>DB: COMMIT
     A-->>T: 200 with an empty body
+    A->>BG: add_task extract_reply (only on a new MessageSid)
+    Note over BG: skipped when no LLM is configured
+    BG->>DB: SELECT the stored reply by MessageSid
+    BG->>BG: process_reply: extract_job -> validate -> (bounded repair)
+    BG->>JR: INSERT job_records (status captured) when valid
+    BG->>JR: INSERT llm_output_audits (always, with job_id when captured)
+    BG->>DB: COMMIT
 ```
 
 The lookup, which is a heuristic and not a validation:
@@ -196,7 +206,13 @@ LIMIT 1;
 | Bad signature | not stored | 403 |
 
 Nothing is rejected for being unlinked. Losing the message would be worse than losing the
-association, and the body is needed for Week 2's extraction either way.
+association, and the body is needed for extraction either way.
+
+The background task (`extract_reply`) opens its own session: the request's session is closed by
+the time the task runs. It re-reads the reply by `MessageSid`, extracts the job (`process_reply`
+in `agent_ant_missed_call.processor`), and writes a `job_records` row (status `captured`) plus an
+`llm_output_audits` row. A failed extraction writes the audit row only. With no provider
+configured the task is skipped entirely, so a reply is still stored and answered.
 
 ### Code map
 
@@ -207,6 +223,11 @@ association, and the body is needed for Week 2's extraction either way.
 | Insert | `idempotency.py::persist_raw_event` |
 | Self-referencing FK | `models.py::RawEvent.related_event_id` |
 | Migration | `migrations/versions/…0002…` (adds `related_event_id`) |
+| Provider seam | `extraction.py::get_llm` — returns `LLM \| None` (None until Bedrock lands) |
+| Session factory | `extraction.py::get_session_factory` |
+| Background task | `extraction.py::extract_reply` |
+| Extraction + persistence | `agent_ant_missed_call.processor::process_reply` |
+| Job insert | `db/jobs.py::persist_job_record` (idempotent on `idempotency_key`) |
 
 ### Twilio field → column
 
@@ -218,8 +239,8 @@ association, and the body is needed for Week 2's extraction either way.
 | — | literal | `raw_events.source = 'sms_reply'` |
 | — | lookup result | `raw_events.related_event_id` |
 
-`Body` is not its own column: nothing queries it yet, and Twilio's field set changes per message,
-so JSONB absorbs both problems. Access it as `row.payload["Body"]`, or `payload->>'Body'` in SQL.
+`Body` is not its own column: Twilio's field set changes per message, so JSONB absorbs that.
+Extraction reads it as `row.payload["Body"]` (or `payload->>'Body'` in SQL).
 
 ## Failure paths
 

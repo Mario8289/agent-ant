@@ -13,6 +13,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     MetaData,
@@ -69,6 +70,42 @@ class RawEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class JobRecord(Base):
+    """A job captured from a caller's reply (the ``job_records`` table).
+
+    Mirrors the Pydantic ``JobRecord`` contract in ``agent_ant_missed_call.schemas``: trusted
+    fields (``idempotency_key``, ``caller_number``, ``received_at``) come from provider metadata,
+    never the LLM; everything else is extracted and human-correctable. One row per reply:
+    ``idempotency_key`` is the reply's ``MessageSid`` and is unique, so a retried extraction
+    cannot create a second job.
+    """
+
+    __tablename__ = "job_records"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('captured', 'needs_review', 'approved', 'rejected')", name="status_valid"
+        ),
+        CheckConstraint("urgency IN ('low', 'medium', 'high', 'unknown')", name="urgency_valid"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # The reply this job was extracted from. Anchors the job to real, persisted data.
+    raw_event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_events.id"))
+    idempotency_key: Mapped[str] = mapped_column(Text, unique=True)
+    caller_number: Mapped[str] = mapped_column(Text)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    raw_message: Mapped[str] = mapped_column(Text)
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(Text, nullable=True)
+    urgency: Mapped[str] = mapped_column(Text, default="unknown")
+    preferred_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(Text, default="captured")
+    extraction_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class LLMOutputAudit(Base):
     """One extraction attempt, logged verbatim for drift monitoring (R6).
 
@@ -77,9 +114,8 @@ class LLMOutputAudit(Base):
     text (JSON when the model returned structured output), stored as-is, including malformed
     output that failed validation.
 
-    ``raw_event_id`` anchors the row to the inbound event it ran over, which exists today.
-    ``job_id`` points at the ``job_records`` row it produced, but that table does not exist yet
-    (#23), so the column is nullable and its foreign key is added when the table lands.
+    ``raw_event_id`` anchors the row to the inbound event it ran over. ``job_id`` points at the
+    ``job_records`` row it produced; it is null when extraction failed and no job was written.
     """
 
     __tablename__ = "llm_output_audits"
@@ -87,7 +123,9 @@ class LLMOutputAudit(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     raw_event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_events.id"))
-    job_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    job_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("job_records.id"), nullable=True
+    )
     model: Mapped[str] = mapped_column(Text)
     prompt_version: Mapped[str] = mapped_column(Text)
     raw_output: Mapped[str] = mapped_column(Text)
