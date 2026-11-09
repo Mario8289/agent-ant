@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.7
+version: 0.8
 last_updated: 2026-11-09
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -54,6 +54,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-011 | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
 | D-012 | Audit trail: two tables (`llm_output_audits` + `human_edits`), `job_id` deferred | accepted | 2026-11-09 |
 | D-013 | `job_records` table + background extraction; the approval interrupt stays Week 4 | accepted | 2026-11-09 |
+| D-014 | Dashboard lives in the API (one service), server-rendered | accepted | 2026-11-09 |
 
 ## Entries
 
@@ -257,6 +258,22 @@ here as a single entry. Decisions that need more space get a full ADR in
   [09-execution-plan.md](./09-execution-plan.md) Week 2 "done when"; D-008, D-012
 - **Reversible?:** cheap — tables are new; the background-task wiring is a small seam.
 
+### D-014 — Dashboard lives in the API (one service), server-rendered
+- **Date:** 2026-11-09
+- **Status:** accepted
+- **Context:** #28 asks where the HITL dashboard lives relative to the `apps/dashboard`
+  placeholder. D-005 commits to one service and one Postgres, so a second deployable would break
+  that.
+- **Decision:** The dashboard is routes plus Jinja2 templates inside `apps/api` — no second
+  service. It is server-rendered to keep the repository Python-only. The approval logic
+  (`approve` / `edit` / `reject`, and the `human_edits` diff) lives in `packages/core`
+  (`db/approval.py`); the app layer does only HTTP and templating. `apps/dashboard` stays as a
+  pointer, not a service.
+- **Consequences:** One process serves both webhooks and the dashboard. A JSON API can be added
+  later without moving the approval logic. No SPA or build toolchain.
+- **Source:** D-005; issue #28
+- **Reversible?:** cheap — the routes and templates can move to a separate app later.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -273,6 +290,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.8 (2026-11-09)** — D-014 accepted: the HITL dashboard lives in the API, server-rendered.
 - **0.7 (2026-11-09)** — D-013 accepted: `job_records` table and background extraction wire a
   reply into a captured job + audit row; the approval interrupt stays Week 4.
 - **0.6 (2026-11-09)** — D-012 accepted: audit trail is two tables (`llm_output_audits` +
