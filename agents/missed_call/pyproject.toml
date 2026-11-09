@@ -3,7 +3,7 @@ name = "agent-ant-missed-call"
 version = "0.1.0"
 description = "Agent: missed call -> structured job record"
 requires-python = ">=3.12"
-dependencies = ["agent-ant-core", "boto3>=1.35"]
+dependencies = ["agent-ant-core", "boto3>=1.35", "langgraph>=0.2"]
 
 [tool.uv.sources]
 agent-ant-core = { workspace = true }

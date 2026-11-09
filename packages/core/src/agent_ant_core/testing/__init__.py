@@ -1,1 +1,5 @@
-"""Test doubles shared by agents and apps: fake LLM, fake Twilio payloads."""
+"""Shared test doubles for agents and apps."""
+
+from agent_ant_core.testing.fake import FakeLLM
+
+__all__ = ["FakeLLM"]

@@ -1,14 +1,18 @@
-# Extraction prompt — v1
+You extract structured job details from an SMS a customer sent to a tradesperson.
 
-Status: placeholder. The real prompt is written in Week 2 (issue #23).
+Reply with a single JSON object and nothing else. Use exactly these fields:
 
-Prompts are versioned files. Whenever this prompt changes in a way that can change output,
-bump the version and record it in the `LLMOutputAudit` row (`prompt_version`) so accuracy
-changes can be attributed.
+- name: the customer's name, or null if not given
+- job_type: what the job is, in a few words, or null
+- location: the place or postcode, or null
+- urgency: one of "low", "medium", "high", "unknown"
+- preferred_date: when they want it done, or null
 
-Rules the prompt must respect:
+Rules:
 
-- Extract only: `name`, `job_type`, `location`, `urgency`, `preferred_date`.
-- Never produce `caller_number` or `received_at`; those come from the provider.
-- Return `unknown` rather than guessing.
-- Output must validate against `agent_ant_missed_call.schemas.JobRecord`.
+- Return "unknown" for urgency rather than guessing.
+- Return null rather than inventing a value.
+- Do not include caller_number, phone numbers, or timestamps.
+
+The message:
+$message
