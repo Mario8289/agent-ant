@@ -1,0 +1,20 @@
+{"message": "hi its sam need a wardrobe fitted in leeds ls6 can you come tomorrow", "label": {"name": "Sam", "job_type": "wardrobe fitting", "location": "Leeds LS6", "urgency": "unknown", "preferred_date": "tomorrow"}}
+{"message": "leaking tap in the kitchen water everywhere need someone NOW", "label": {"name": null, "job_type": "tap repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "can you give me a quote for a new kitchen worktop", "label": {"name": null, "job_type": "kitchen worktop", "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "need a door hung in leeds, not urgent, next week is fine", "label": {"name": null, "job_type": "door hanging", "location": "Leeds", "urgency": "low", "preferred_date": "next week"}}
+{"message": "boiler has packed in no heating please help", "label": {"name": null, "job_type": "boiler repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "hi, wondering if you do fence repairs? mine blew down in the storm", "label": {"name": null, "job_type": "fence repair", "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "shelf fitting in my living room, im free saturday", "label": {"name": null, "job_type": "shelf fitting", "location": null, "urgency": "unknown", "preferred_date": "saturday"}}
+{"message": "bathroom floor tiles cracked, medium priority, LS2", "label": {"name": null, "job_type": "tiling", "location": "LS2", "urgency": "medium", "preferred_date": null}}
+{"message": "decking quote please, back garden", "label": {"name": null, "job_type": "decking", "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "urgent - roof leaking into bedroom", "label": {"name": null, "job_type": "roof repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "hi im dave, need skirting boards fitted in 2 rooms, can you do next month?", "label": {"name": "Dave", "job_type": "skirting boards", "location": null, "urgency": "unknown", "preferred_date": "next month"}}
+{"message": "carpet fitting for a small bedroom in leeds", "label": {"name": null, "job_type": "carpet fitting", "location": "Leeds", "urgency": "unknown", "preferred_date": null}}
+{"message": "squeaky floorboard in the hallway, not urgent", "label": {"name": null, "job_type": "floorboard repair", "location": null, "urgency": "low", "preferred_date": null}}
+{"message": "need a quote for a bespoke wardrobe", "label": {"name": null, "job_type": "bespoke wardrobe", "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "can you fix a stuck window in LS6 tomorrow?", "label": {"name": null, "job_type": "window repair", "location": "LS6", "urgency": "unknown", "preferred_date": "tomorrow"}}
+{"message": "my fence is falling over, need it sorting asap", "label": {"name": null, "job_type": "fence repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "new lock on the front door please", "label": {"name": null, "job_type": "lock fitting", "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "kitchen cupboard doors need replacing, 6 doors, medium", "label": {"name": null, "job_type": "cupboard doors", "location": null, "urgency": "medium", "preferred_date": null}}
+{"message": "hello, loft ladder fitting in leeds whenever suits", "label": {"name": null, "job_type": "loft ladder fitting", "location": "Leeds", "urgency": "low", "preferred_date": null}}
+{"message": "need garden gate built, can you call me back about a quote", "label": {"name": null, "job_type": "garden gate", "location": null, "urgency": "unknown", "preferred_date": null}}
