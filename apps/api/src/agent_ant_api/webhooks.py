@@ -9,12 +9,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agent_ant_api.extraction import SessionFactory, extract_reply, get_llm, get_session_factory
 from agent_ant_api.security import verified_twilio_form
 from agent_ant_api.sms import SmsSender, get_sms_sender, send_missed_call_sms
 from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.idempotency import persist_raw_event
 from agent_ant_core.db.models import RawEvent
 from agent_ant_core.db.session import get_sessionmaker
+from agent_ant_core.llm import LLM
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +82,17 @@ def missed_call(
 def sms_reply(
     form: Annotated[dict[str, str], Depends(verified_twilio_form)],
     session: Annotated[Session, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    llm: Annotated[LLM | None, Depends(get_llm)],
+    session_factory: Annotated[SessionFactory, Depends(get_session_factory)],
+    background: BackgroundTasks,
 ) -> Response:
     """Persist the caller's reply, linked to their most recent missed call.
 
     Keyed on ``MessageSid`` (rule 3). The link is a plain lookup by caller number, so a reply
     from a caller with no missed call is still stored, just unlinked. Linking is by number
-    because the reply is sent to the same number that was called. Replies are never acted on
-    here: extraction is Week 2.
+    because the reply is sent to the same number that was called. After storing, extraction runs
+    in the background; a duplicate delivery stores nothing and starts no second extraction.
     """
     message_sid = form.get("MessageSid")
     caller = form.get("From")
@@ -110,6 +116,15 @@ def sms_reply(
         related_event_id=related_id,
     )
     session.commit()
+
+    if inserted:
+        background.add_task(
+            extract_reply,
+            llm,
+            settings.llm_model or "unconfigured",
+            message_sid,
+            session_factory,
+        )
 
     logger.info("sms reply %s: %s", message_sid, "stored" if inserted else "duplicate ignored")
     return Response(status_code=200)
