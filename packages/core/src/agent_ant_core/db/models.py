@@ -151,3 +151,18 @@ class HumanEdit(Base):
     llm_output_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("llm_output_audits.id"))
     edit_diff: Mapped[dict[str, dict[str, str | None]]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OptOut(Base):
+    """A caller who texted STOP and must not receive further auto-texts (#72).
+
+    Keyed on ``caller_number`` (the ``From`` Twilio sends), so a second STOP is an idempotent
+    no-op rather than a duplicate row. The number is a trusted provider field, never LLM output.
+    """
+
+    __tablename__ = "opt_outs"
+
+    caller_number: Mapped[str] = mapped_column(Text, primary_key=True)
+    opted_out_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

@@ -85,3 +85,12 @@ def test_reply_is_not_extracted_when_no_provider_is_configured(
 
     assert session.execute(select(JobRecord)).scalars().all() == []
     assert session.execute(select(LLMOutputAudit)).scalars().all() == []
+
+
+def test_stop_reply_is_not_extracted(session: Session, engine: Engine) -> None:
+    client = _client(session, engine, FakeLLM(GOOD))
+    _post(client, CALL_PATH, CALL)
+    _post(client, REPLY_PATH, {**REPLY, "Body": "STOP"})
+
+    assert session.execute(select(JobRecord)).scalars().all() == []
+    assert session.execute(select(LLMOutputAudit)).scalars().all() == []
