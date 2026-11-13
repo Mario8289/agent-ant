@@ -3,6 +3,8 @@
 - **Status:** accepted
 - **Date:** 2026-11-05
 - **Decision log entry:** D-009
+- **Superseded in part by:** D-015 (2026-11-10) — the single-region `eu-west-2` constraint is
+  relaxed to EU cross-region (`eu.*` profiles). See spikes/06-uk-eea-data-residency.md.
 
 ## Context
 

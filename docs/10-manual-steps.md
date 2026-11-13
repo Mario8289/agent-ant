@@ -1,8 +1,8 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.12
-last_updated: 2026-11-08
+version: 0.18
+last_updated: 2026-11-13
 ---
 
 # 10 — Manual Steps
@@ -42,27 +42,40 @@ Blocks: the missed-call text actually reaching a phone (#20).
 - [ ] Decide whether a caller ringing the Twilio number back should hear more than the fixed
   message (see D-011).
 
-`HELP`/`STOP` handling is deferred: the guideline applies to real end users, and the
-prototype only uses synthetic data and test calls. Tracked in
-[#72](https://github.com/Mario8289/agent-ant/issues/72), needed before the Week 4 gates.
+`HELP`/`STOP` handling is implemented (#72, D-019): STOP opts the caller out and is confirmed
+with a fixed text, HELP answers with the reply-to-here instructions. Both are fixed templates
+(D-004).
 
 ### LLM credentials for Week 2 — Bedrock
 Blocks: the extraction agent (#22, #23). Nothing runs without a provider. Bedrock is the Week 2
-provider (D-009): `eu-west-2` (London), single-region inference.
+provider (D-009, D-015): `eu-west-2` (London), EU-geography inference (`eu.*` profiles accepted).
 
-- [ ] AWS account with billing enabled. Bedrock is not covered by the free tier, and the account
-  holder is who the DPA attaches to. Set a budget alarm before the first call (a few pounds a
-  month is enough at this volume).
-- [ ] Create an IAM user for local development rather than using root, attach the policy in
-  **Reference -> Bedrock IAM policy**, then:
-  `aws configure --profile agent-ant` (region `eu-west-2`). Credentials stay in
-  `~/.aws/credentials`, never in the repo or `.env`.
+- [x] AWS account with billing enabled (2026-11-10). The account holder is who the DPA attaches
+  to. A spend guard (budget + SCP action) is set up — see **Reference -> Bedrock spend guard**.
+- [x] Create an IAM user for local development rather than using root: `agent-ant-user`, in the
+  member account `817210752440` (verified 2026-11-10), so the SCP spend guard covers it. Its
+  inline policy `BedrockInvokeEuSonnet55` allows `InvokeModel`/`InvokeModelWithResponseStream`
+  on the `eu.anthropic.claude-sonnet-4-6` inference profile and foundation model (`InvokeModel`
+  also covers the `Converse` API the code uses; the policy name is now stale — it points at 4.6,
+  see D-016). Put the access key in `~/.aws/credentials` via
+  `aws configure --profile agent-ant` (region `eu-west-2`) — the app reads `AWS_PROFILE` and does
+  **not** read access keys from `.env`.
+- [x] Enable London (`eu-west-2`) for the member account (2026-11-10). Both the region SCP and
+  the console's Visible Regions had to change — see **Reference -> Bedrock region**.
 - [ ] In the console, region **eu-west-2**, open Bedrock -> **Model access** and request the
-  model chosen for #22. Anthropic models ask for a use case and can take days; Amazon's models
-  are usually instant. A model listed in `us-east-1` is not necessarily offered in London.
-- [ ] Set `LLM_PROVIDER=bedrock`, `LLM_MODEL=<id>` and `AWS_PROFILE=agent-ant` in `.env`;
-  `LLM_API_KEY` stays empty. Use the plain model id, not an `eu.` inference profile, unless the
-  model is only offered that way — a cross-region profile can route outside the UK.
+  model chosen for #22. Anthropic models ask for a use case (the catalog shows a banner for
+  first-time users to submit details) and can take days; Amazon's models are usually instant. A
+  model listed in `us-east-1` is not necessarily offered in London. An `eu.*` cross-region
+  profile is accepted (D-015) and stays in EU geography; avoid `global.*`, which can route
+  outside the EU. **Account gating:** Sonnet 5/5.5 and Opus 5.5 return "not available for this
+  account" for `817210752440` even via `global.*` (it is an entitlement check, not routing);
+  Sonnet 4.6 and Haiku 4.5 work (D-016). Request newer models from AWS Sales/Support, then swap
+  the `.env` id and IAM ARNs back.
+- [ ] Set `LLM_PROVIDER=bedrock`, `LLM_MODEL=eu.anthropic.claude-sonnet-4-6` and
+  `AWS_PROFILE=agent-ant` in `.env` (D-016). `LLM_API_KEY` stays empty, and do **not** set
+  `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` in `.env` — the app reads `AWS_PROFILE` →
+  `~/.aws/credentials`, not keys from `.env`. `LLM_MODEL` is a foundation-model id or an `eu.*`
+  inference profile (D-015); never `global.*`.
 - [ ] Run `just check-llm`. It prints the models the region actually offers, then sends one
   prompt to `LLM_MODEL` and prints the reply, tokens and latency. It stops before the call with
   a specific message if credentials, region or model access are wrong.
@@ -226,8 +239,71 @@ Week 4 lock-in (#29) narrow the invoke statements to the chosen model's ARN.
 Model access is a separate grant from IAM: the policy lets the user call Bedrock, but each
 model still has to be enabled in **Model access** for that region.
 
+### Bedrock region — London (eu-west-2)
+
+In-region (on-demand) inference stays in one region; `eu.*` cross-region stays in EU geography
+(D-015). Two separate settings had to change before London was available to the member account
+(2026-11-10):
+
+- **Region SCP.** In the management account, Organizations → Policies → Service control policies →
+  `AdvancedModeRegionRestrictionSecurityControlPolicy` (p-6mega3lz). Added `eu-west-2` to the
+  `RegionFloor` statement's allowed `aws:RequestedRegion` list. The policy is attached at Root,
+  so every member account can now use London (Stockholm stays allowed).
+- **Visible Regions.** In `agent-ant` (817210752440), Settings → Unified settings → Account
+  settings → Visible Regions → tick London. The SCP alone is not enough: the console still showed
+  "Region Europe (London) restricted" until this was ticked.
+
+After both, Bedrock → Model catalog under `agent-ant` opens in eu-west-2 (82 serverless models).
+The SCP is organisation-wide, but Visible Regions is per-account, so any other member account
+still needs its own toggle to see London in its console.
+
+Choosing a model: many catalog entries are labelled **Cross-region inference**. An `eu.*` profile
+stays in EU geography and is accepted (D-015); a `global.*` profile can route outside the EU and
+is rejected. An in-region (on-demand) model stays in one region and is also fine.
+
+### Bedrock spend guard (SCP + budget action)
+
+Hard-stops Bedrock spend rather than only emailing. A budget action attaches a deny SCP to an OU
+at a threshold. SCPs cannot be overridden by the member account — but they do **not** apply to
+the management account, so the guard only covers accounts inside the target OU.
+
+Created 2026-11-10, all in the management account `716189571196` (ant-team):
+
+- **SCP** `BudgetsSpendLimitDenyBedrockUsage` — a deny that blocks Bedrock model calls.
+- **OU** `Workloads` (`ou-09c8-0wtd89zw`), containing the member account `agent-ant`
+  (`817210752440`).
+- **Role** `BudgetsDenyBedrockActionRole` — trusted by `budgets.amazonaws.com`; inline policy
+  `BudgetsDenyBedrockActionRolePolicy` allows `organizations:AttachPolicy`/`DetachPolicy` on the
+  SCP ARN and the Workloads OU.
+- **Budget** `Monthly-20USD-Bedrock-Guard` — monthly, $20, unblended, excluding Credit and
+  Refund. Email alerts at 50/75/90/95% to the account email; at 95% an SCP action attaches the
+  deny policy to Workloads, run automatically.
+
+Still to verify before the first call:
+
+- [ ] **Which account `agent-ant-user` is in.** The guard only works if the app calls Bedrock
+  from `817210752440` (in Workloads). If the user is in the management account, the SCP never
+  fires.
+- [ ] **SCP content.** Must deny `bedrock:Converse` and `bedrock:ConverseStream` too (the code
+  uses Converse, not just `InvokeModel`). A `bedrock:*` deny is the safe choice.
+- [ ] **Reverse action.** The SCP stays attached once applied; add a reverse action at a lower
+  threshold, or note that a human must detach it after the spend is resolved.
+- [ ] **Alert emails arrive.** Confirm the 50% email reaches the account-holder inbox.
+
 ## Change history
 
+- **0.18 (2026-11-13)** — HELP/STOP opt-out implemented (#72, D-019); removed the deferral note.
+- **0.17 (2026-11-10)** — D-016: extraction model is `eu.anthropic.claude-sonnet-4-6` (newer
+  Claude models account-gated for `817210752440`); noted the IAM policy name is stale.
+- **0.16 (2026-11-10)** — D-015: `eu.*` cross-region inference is now the accepted route; updated
+  the single-region guidance and the `.env` auth note (keys in `~/.aws/credentials`, not `.env`).
+- **0.15 (2026-11-10)** — confirmed `agent-ant-user` is in the member account `817210752440`
+  (covered by the SCP guard); noted its scoped inline policy and that the access key goes in
+  `~/.aws/credentials`, not `.env`.
+- **0.14 (2026-11-10)** — documented the Bedrock region enablement (region SCP + Visible Regions)
+  and the cross-region-inference caveat for D-009.
+- **0.13 (2026-11-10)** — recorded the Bedrock spend guard (SCP + budget action) and its
+  verification checklist; ticked the AWS account and IAM-user steps.
 - **0.12 (2026-11-09)** — restored `just repoint` (the recipe, script and API documentation
   were dropped from the #75 squash merge); `just check-llm` documented alongside it.
 - **0.11 (2026-11-08)** — LLM entry rewritten as executable Bedrock steps (IAM user, model

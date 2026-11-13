@@ -8,7 +8,11 @@ anyone finds out the setup is wrong.
 
 It reads ``LLM_MODEL``, ``AWS_REGION`` and ``AWS_PROFILE`` from settings, so values in ``.env``
 work: pydantic-settings loads them for the app but does not export them to ``os.environ``, and
-boto3 reads only the environment. ``LLM_API_KEY`` is not used — Bedrock has no API key.
+boto3 reads only the environment. ``LLM_API_KEY`` is not used — Bedrock has no API key, and the
+access key lives in ``~/.aws/credentials`` under the named profile.
+
+``LLM_MODEL`` may be a foundation-model id (in-region, on-demand) or an ``eu.*`` inference
+profile (EU cross-region, D-015). ``global.*`` is rejected: it can route outside the EU.
 
 Usage: ``just check-llm``.
 """
@@ -55,21 +59,9 @@ def _print_models(models: list[dict[str, Any]]) -> None:
     for model_id in on_demand:
         print(f"  {model_id}")
     if profile_only:
-        print("\nonly through an inference profile (may leave the UK):")
+        print("\nonly through an inference profile (eu.* = EU geography, global.* = anywhere):")
         for model_id in profile_only:
             print(f"  {model_id}")
-
-
-def _find_profile(bedrock: Any, model_id: str) -> str | None:
-    """Return an inference profile id carrying this model, if the region has one."""
-    profiles = bedrock.list_inference_profiles(typeEquals="SYSTEM_DEFINED")[
-        "inferenceProfileSummaries"
-    ]
-    for profile in profiles:
-        for model in profile.get("models", []):
-            if model.get("modelArn", "").endswith(model_id):
-                return str(profile["inferenceProfileId"])
-    return None
 
 
 def main() -> int:
@@ -110,13 +102,17 @@ def main() -> int:
         models = [
             m for m in bedrock.list_foundation_models()["modelSummaries"] if _is_text_model(m)
         ]
+        _print_models(models)
     except ClientError as exc:
         code = exc.response["Error"]["Code"]
         if code in {"AccessDeniedException", "UnrecognizedClientException"}:
-            return _fail(2, "credentials cannot list models. Check the IAM policy in docs/10.")
-        return _fail(2, f"listing models failed: {exc}")
-
-    _print_models(models)
+            print(
+                "\ncannot list models (no ListFoundationModels permission); "
+                "proceeding to invoke LLM_MODEL directly.",
+                file=sys.stderr,
+            )
+        else:
+            return _fail(2, f"listing models failed: {exc}")
 
     model_id = (settings.llm_model or "").strip() or None
     if not model_id:
@@ -126,27 +122,13 @@ def main() -> int:
             "and re-run `just check-llm`.",
         )
 
-    known = {m["modelId"] for m in models}
-    if model_id not in known:
-        profile_id = _find_profile(bedrock, model_id)
-        if profile_id:
-            return _fail(
-                1,
-                f"{model_id} is not offered as a single-region model in {region}. "
-                f"It is available through inference profile {profile_id}, which can route "
-                "outside the UK. D-009 asks for single-region, so prefer a model above.",
-            )
+    if model_id.startswith("global."):
         return _fail(
             1,
-            f"{model_id} is not offered in {region}. It may be listed in another region, "
-            "or model access was not granted. Check Bedrock -> Model access, then pick an id "
-            "printed above.",
+            f"{model_id} is a global cross-region profile, which can route to any region "
+            "including the US. D-015 keeps inference inside the EU; use an `eu.*` profile or a "
+            "single-region model id instead.",
         )
-
-    if "ON_DEMAND" not in next(m for m in models if m["modelId"] == model_id).get(
-        "inferenceTypesSupported", []
-    ):
-        return _fail(1, f"{model_id} cannot be invoked on-demand in {region}.")
 
     print(f"\ninvoking {model_id} ...")
     runtime = session.client("bedrock-runtime")
@@ -164,9 +146,10 @@ def main() -> int:
         if code == "AccessDeniedException":
             return _fail(
                 3,
-                f"access denied to {model_id}. The IAM policy allows InvokeModel, but model "
-                "access for this model may not be granted. Open Bedrock -> Model access in "
-                f"{region}, request the model, then retry. ({message})",
+                f"access denied to {model_id}. Either the IAM policy does not allow invoking "
+                "this model/profile, or model access was not granted. Open Bedrock -> Model "
+                f"access in {region}, request the model, and check the IAM policy allows the "
+                f"inference-profile ARN. ({message})",
             )
         if code == "ValidationException":
             return _fail(3, f"Bedrock rejected the request: {message}")
