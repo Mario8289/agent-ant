@@ -23,6 +23,7 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agent_ant_api.notify import notify_support
 from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.extraction import (
     DEAD,
@@ -145,7 +146,11 @@ def retry_failed_extractions(
         reply = session.get(RawEvent, raw_event_id)
         assert reply is not None
         if reply.extraction_status == FAILED and (reply.extraction_attempts or 0) >= max_attempts:
+            message_sid = reply.idempotency_key
             reply.extraction_status = DEAD
             session.commit()
+            notify_support(
+                f"extraction dead-lettered for reply {message_sid} — needs manual filing"
+            )
 
     return recovered

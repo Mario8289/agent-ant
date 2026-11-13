@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     aws_region: str = "eu-west-2"
     aws_profile: str | None = None
 
+    # Support alerting (issue #94): an incoming-webhook URL that posts failures to a Slack
+    # channel. Unset = alerts are a no-op (local dev). The URL is a secret — anyone who has it
+    # can post to the channel — so it is never committed or logged.
+    slack_webhook_url: SecretStr | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

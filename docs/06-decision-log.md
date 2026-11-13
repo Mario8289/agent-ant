@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.18
+version: 0.19
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -66,6 +66,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-023 | Retry policy: failed SMS sends retried up to 3 attempts, then dead-lettered (#34) | accepted | 2026-11-13 |
 | D-024 | Retry policy: failed extractions retried up to 3 attempts, then dead-lettered (#34) | accepted | 2026-11-13 |
 | D-025 | Retention purge: outbound personal fields redacted at 30 days; wider retention deferred (#34) | accepted | 2026-11-13 |
+| D-026 | Support alerting via Slack incoming webhook (operator, not customer) (#94) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -605,6 +606,32 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — a constant and a script. (The redaction itself is one-way for the row,
   which is the point.)
 
+### D-026 — Support alerting via Slack incoming webhook (operator, not customer) (#94)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** D-023 and D-024 made failures *visible* on the dashboard but not *pushed*: the
+  founder would have to open the dashboard to notice a failed send or a dead-lettered extraction.
+  The dashboard is the tradesperson's surface; infra failures are the *operator's* job (provider
+  down, retry queue filling) and pushing them to the tradesperson would confuse him. The founder
+  asked where alerts land and split the channels himself: he wants system logs/alerts in Slack,
+  and will use WhatsApp (or in-app chat) for *client* conversations later.
+- **Decision:**
+  - Support alerts go to **Slack via an incoming webhook** (`SLACK_WEBHOOK_URL`, a `SecretStr`).
+    Unset = no-op, so local dev stays quiet.
+  - Two alert types, both in background tasks / scheduled scripts (never the webhook hot path):
+    an SMS send failure, and a dead-lettered extraction (needs manual filing).
+  - Alert text carries a SID/number, never a message body or caller number (rule 5), and points
+    the operator at the dashboard. `post_to_slack` swallows all errors — alerting must never take
+    down the thing it watches.
+  - Customer-facing conversation stays a *separate, later* product decision: WhatsApp or in-app
+    chat, not Slack.
+- **Consequences:** `apps/api/src/agent_ant_api/notify.py` (`post_to_slack`, `make_notifier`,
+  `notify_support`); `slack_webhook_url` on `Settings`; `SLACK_WEBHOOK_URL` in `.env.example`;
+  `just test-slack` (`scripts/test_slack.py`); wired into `sms.py` (send failure) and
+  `extraction.py` (dead-letter).
+- **Source:** #94; founder decision 2026-11-13.
+- **Reversible?:** cheap — remove the webhook URL and the notifier is a no-op.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -620,6 +647,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.19 (2026-11-13)** — D-026 accepted: support alerts go to Slack via an incoming webhook
+  (operator-only); WhatsApp/in-app chat stays a later customer-channel decision (#94).
 - **0.18 (2026-11-13)** — D-024 and D-025 accepted: failed extractions retried then dead-lettered,
   and the 30-day outbound purge automated (wider retention deferred). Completes #34.
 - **0.17 (2026-11-13)** — D-023 accepted: failed SMS sends retried up to 3 attempts then
