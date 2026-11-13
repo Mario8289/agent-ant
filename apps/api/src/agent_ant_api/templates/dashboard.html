@@ -6,6 +6,17 @@
 </head>
 <body>
   <h1>Jobs to review</h1>
+
+  <section id="metrics" style="border-bottom: 1px solid #ccc; margin-bottom: 1.5em">
+    <h2>Metrics</h2>
+    <ul>
+      <li>Capture rate: {{ metrics.jobs }} job{{ '' if metrics.jobs == 1 else 's' }} / {{ metrics.missed_calls }} missed call{{ '' if metrics.missed_calls == 1 else 's' }} ({{ (metrics.capture_rate * 100) | round }}%)</li>
+      <li>Reply rate: {{ metrics.replies }} / {{ metrics.texts_sent }} texts sent ({{ (metrics.reply_rate * 100) | round }}%)</li>
+      <li>Jobs booked: {{ metrics.jobs_booked }}</li>
+      <li>Edit rate: {{ metrics.edited_jobs }} / {{ metrics.jobs }} jobs ({{ (metrics.edit_rate * 100) | round }}%)</li>
+    </ul>
+  </section>
+
   {% if not jobs %}
     <p>Nothing waiting.</p>
   {% endif %}
