@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from agent_ant_core.db import approval
 from agent_ant_core.db.session import get_sessionmaker
+from agent_ant_core.metrics import compute_metrics
 
 router = APIRouter()
 
@@ -32,7 +33,10 @@ def get_session() -> Iterator[Session]:
 @router.get("/dashboard")
 def dashboard(request: Request, session: Annotated[Session, Depends(get_session)]) -> Response:
     jobs = approval.list_captured_jobs(session)
-    return _TEMPLATES.TemplateResponse(request, "dashboard.html", {"jobs": jobs})
+    metrics = compute_metrics(session)
+    return _TEMPLATES.TemplateResponse(
+        request, "dashboard.html", {"jobs": jobs, "metrics": metrics}
+    )
 
 
 @router.post("/jobs/{job_id}/approve")

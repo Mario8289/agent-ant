@@ -305,7 +305,9 @@ sequenceDiagram
 
 The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so. The dashboard
 is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
-D-005). It has no JSON API and no auth yet — one page, four routes.
+D-005). It has no JSON API and no auth yet — one page, four routes. It also renders the four
+business metrics (capture rate, reply rate, jobs booked, edit rate — D-022) at the top, computed
+by `agent_ant_core.metrics.compute_metrics`.
 
 ```mermaid
 sequenceDiagram
