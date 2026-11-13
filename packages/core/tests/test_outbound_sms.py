@@ -1,6 +1,6 @@
 """Outbound SMS persistence: send bookkeeping and status callbacks (issue #73)."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from agent_ant_core.db.outbound_sms import (
     list_failed_messages,
     mark_failed,
     mark_sent,
+    purge_personal_data,
     retry_failed_sends,
 )
 
@@ -177,3 +178,33 @@ def test_list_failed_messages_returns_failed_and_dead(session: Session) -> None:
     messages = list_failed_messages(session)
 
     assert {m.id for m in messages} == {failed.id, dead.id}
+
+
+def test_purge_personal_data_redacts_only_old_messages(session: Session) -> None:
+    call = _call(session)
+    old = create_outbound_message(session, raw_event_id=call.id, to=NUMBER, body="hi")
+    old.created_at = datetime.now(UTC) - timedelta(days=31)
+    fresh = create_outbound_message(session, raw_event_id=call.id, to=NUMBER, body="hi")
+    session.commit()
+
+    purged = purge_personal_data(session)
+    session.commit()
+
+    assert purged == 1
+    session.refresh(old)
+    session.refresh(fresh)
+    assert old.to == ""
+    assert old.body == ""
+    assert fresh.to == NUMBER
+    assert fresh.body == "hi"
+
+
+def test_purge_is_idempotent(session: Session) -> None:
+    call = _call(session)
+    old = create_outbound_message(session, raw_event_id=call.id, to=NUMBER, body="hi")
+    old.created_at = datetime.now(UTC) - timedelta(days=31)
+    session.commit()
+
+    assert purge_personal_data(session) == 1
+    session.commit()
+    assert purge_personal_data(session) == 0  # nothing left to redact

@@ -7,15 +7,18 @@ dead-lettered (#34). The caller owns the transaction and commits around the netw
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from agent_ant_core.db.models import OutboundMessage
 
 # A failed send is retried up to this many attempts (including the first), then dead-lettered.
 MAX_SEND_ATTEMPTS = 3
+
+# Personal fields (``to``, ``body``) are retained this long, then redacted (D-021).
+PERSONAL_RETENTION_DAYS = 30
 
 # A send callable: takes (to, body), returns the Twilio MessageSid, or raises on failure.
 SendFn = Callable[[str, str], str]
@@ -127,3 +130,26 @@ def find_outbound_for_reply(session: Session, related_event_id: int) -> Outbound
         .order_by(OutboundMessage.created_at.desc())
         .limit(1)
     ).scalar_one_or_none()
+
+
+def purge_personal_data(
+    session: Session, *, older_than: timedelta = timedelta(days=PERSONAL_RETENTION_DAYS)
+) -> int:
+    """Redact the personal fields of outbound messages past the retention window (D-021).
+
+    ``to`` and ``body`` are cleared (set to ``""``); the SID, status, error code and timestamps
+    stay so aggregate metrics remain correct. Only rows that still hold data are touched, so the
+    purge is idempotent. Returns the number of rows redacted. The caller commits.
+    """
+    cutoff = datetime.now(UTC) - older_than
+    updated_ids = session.scalars(
+        update(OutboundMessage)
+        .where(
+            OutboundMessage.created_at < cutoff,
+            OutboundMessage.to != "",
+            OutboundMessage.body != "",
+        )
+        .values(to="", body="")
+        .returning(OutboundMessage.id)
+    ).all()
+    return len(updated_ids)

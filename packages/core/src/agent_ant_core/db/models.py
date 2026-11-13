@@ -54,6 +54,9 @@ class RawEvent(Base):
     __tablename__ = "raw_events"
     __table_args__ = (
         CheckConstraint("source IN ('voice_call', 'sms_reply')", name="source_valid"),
+        CheckConstraint(
+            "extraction_status IN ('done', 'failed', 'dead')", name="extraction_status_valid"
+        ),
     )
     # Mapped[T] is the Python type pyright sees (T | None also sets nullable); mapped_column() is the
     # SQL type. Nothing cross-checks the two, so keep them consistent by hand.
@@ -67,6 +70,12 @@ class RawEvent(Base):
     related_event_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("raw_events.id"), nullable=True
     )
+    # Extraction bookkeeping (#34): how many times extraction has run over this reply and what the
+    # last outcome was. 0 / null for voice calls, which are never extracted. Lives on the raw event
+    # because the raw event is the replay source: a reply whose extraction failed or never ran is
+    # recovered by reprocessing it, not by looking up a separate queue.
+    extraction_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    extraction_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

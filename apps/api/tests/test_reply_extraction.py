@@ -17,7 +17,8 @@ from agent_ant_api.extraction import get_llm, get_session_factory
 from agent_ant_api.main import create_app
 from agent_ant_api.webhooks import get_session
 from agent_ant_core.config import Settings, get_settings
-from agent_ant_core.db.models import JobRecord, LLMOutputAudit
+from agent_ant_core.db.extraction import DONE, FAILED
+from agent_ant_core.db.models import JobRecord, LLMOutputAudit, RawEvent
 from agent_ant_core.llm import LLM
 from agent_ant_core.testing import FakeLLM
 
@@ -33,6 +34,11 @@ REPLY = {
 GOOD = json.dumps(
     {"name": "Sam", "job_type": "wardrobe fitting", "location": "Leeds", "urgency": "high"}
 )
+
+
+class _RaisingLLM:
+    def complete(self, prompt: str) -> str:
+        raise RuntimeError("provider down")
 
 
 def _use(session: Session) -> Callable[[], Iterator[Session]]:
@@ -74,6 +80,21 @@ def test_reply_is_extracted_into_a_job_and_audit_row(session: Session, engine: E
     audit = session.execute(select(LLMOutputAudit)).scalar_one()
     assert audit.job_id == job.id
     assert audit.validated is True
+
+    reply = session.execute(select(RawEvent).where(RawEvent.source == "sms_reply")).scalar_one()
+    assert reply.extraction_status == DONE
+    assert reply.extraction_attempts == 1
+
+
+def test_failed_extraction_is_marked_failed(session: Session, engine: Engine) -> None:
+    client = _client(session, engine, _RaisingLLM())
+    _post(client, CALL_PATH, CALL)
+    _post(client, REPLY_PATH, REPLY)
+
+    reply = session.execute(select(RawEvent).where(RawEvent.source == "sms_reply")).scalar_one()
+    assert reply.extraction_status == FAILED
+    assert reply.extraction_attempts == 1
+    assert session.execute(select(JobRecord)).scalars().all() == []
 
 
 def test_reply_is_not_extracted_when_no_provider_is_configured(

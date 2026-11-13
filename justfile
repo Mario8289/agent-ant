@@ -45,6 +45,14 @@ check-llm:
 retry-sms:
     uv run --all-packages python scripts/retry_sms.py
 
+# Re-run extraction over retryable replies and dead-letter the exhausted
+retry-extractions:
+    uv run --all-packages python scripts/retry_extractions.py
+
+# Redact outbound personal fields past the 30-day retention window (D-021)
+purge:
+    uv run --all-packages python scripts/purge_old_data.py
+
 # Everything CI runs
 check: lint typecheck test
 
