@@ -17,6 +17,7 @@ from twilio.base.exceptions import TwilioRestException
 from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client
 
+from agent_ant_api.notify import notify_support
 from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.models import RawEvent
 from agent_ant_core.db.outbound_sms import create_outbound_message, mark_failed, mark_sent
@@ -184,8 +185,13 @@ def _send_and_persist(
         except Exception as exc:
             # Broad on purpose: Twilio API errors and network timeouts are different exception
             # types, and none of them may escape a background task.
-            mark_failed(message, _error_code(exc))
+            error_code = _error_code(exc)
+            mark_failed(message, error_code)
             session.commit()
+            notify_support(
+                f"auto-SMS send failed for {trigger_sid}"
+                + (f" (error {error_code})" if error_code else "")
+            )
             logger.exception("%s: sms send failed", trigger_sid)
             return
 

@@ -53,6 +53,10 @@ retry-extractions:
 purge:
     uv run --all-packages python scripts/purge_old_data.py
 
+# Send one test alert to the configured Slack webhook (issue #94)
+test-slack:
+    uv run --all-packages python scripts/test_slack.py
+
 # Everything CI runs
 check: lint typecheck test
 

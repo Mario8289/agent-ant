@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.20
+version: 0.21
 last_updated: 2026-11-13
 ---
 
@@ -169,6 +169,19 @@ days.
   scheduled job, an EventBridge rule, or a cron on the same image. Both scripts live in
   `scripts/` and need the same env as the service (`DATABASE_URL`, Twilio, Bedrock).
 - [ ] Schedule `just purge` (redact outbound `to`/`body` older than 30 days) daily.
+
+### Wire up Slack support alerting (Week 5, #94)
+
+Blocks: failures reaching you without you checking the dashboard. Alerts go to *you* (support),
+not to the customer (D-026).
+
+- [ ] Create a Slack incoming webhook: https://api.slack.com/apps -> **Create New App** ->
+   **From scratch**, then **Incoming Webhooks** -> activate and **Add New Webhook to Workspace**.
+   Pick the channel (a dedicated `#agent-ant-alerts` is cleanest). Copy the
+   `https://hooks.slack.com/services/...` URL.
+- [ ] Put it in the deployed environment as `SLACK_WEBHOOK_URL` (never commit it; it is a secret
+   — anyone who holds it can post to the channel).
+- [ ] Run `just test-slack` against the deployed env and confirm the message lands in the channel.
 
 ## Done
 
@@ -366,6 +379,8 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.21 (2026-11-13)** — added the Slack support-alerting step (D-026): create the incoming
+  webhook, set `SLACK_WEBHOOK_URL`, verify with `just test-slack` (#94).
 - **0.20 (2026-11-13)** — added the Week 5 step to schedule the retry and purge commands (#34,
   D-023/D-024/D-025).
 - **0.19 (2026-11-13)** — added the Week 4 deployment entry: Supabase, ECR, App Runner
