@@ -1,8 +1,8 @@
 ---
 title: Telephony Forwarding Test (G0b runbook)
 status: draft
-version: 0.1
-last_updated: 2026-11-06
+version: 0.2
+last_updated: 2026-11-13
 sources:
   - Apple Support — "Set up call forwarding on iPhone" (checked 2026-11-06)
   - Twilio docs — "Respond to Incoming Phone Calls" (checked 2026-11-06)
@@ -16,7 +16,7 @@ Gate **G0b** asks one question: when Dad's phone is not answered, does the call 
 Twilio number with the caller's number intact? If not, the telephony design changes before any
 code is written (see [00 §6](./00-business-plan.md) and issue [#11](https://github.com/Mario8289/agent-ant/issues/11)).
 
-This runbook is the step-by-step test. Results go on #11.
+This runbook is the step-by-step test. Results go on #47.
 
 ## What is being tested
 
@@ -50,14 +50,14 @@ confirm they work on your network before relying on them.
 
 | Action | Dial | Notes |
 |---|---|---|
-| Forward when not answered | `**61*+447533021710#` then call | Forward after the default ring time |
-| Set the ring time | `**61*+447533021710**20#` | Seconds: 5, 10, 15, 20, 25 or 30. Here 20 seconds |
+| Forward when not answered | `**61*+447533021710**15#` then call | One code sets the target *and* a 15-second ring time |
 | Forward when phone is off or unreachable | `**62*+447533021710#` then call | Separate setting from no-answer. Covers switched-off or no-signal |
 | Check the status | `*#61#` then call | Shows where no-answer calls go |
 | Turn off no-answer forwarding | `##61#` then call | Do this after the test |
 
-If the carrier rejects a code, check their support page for "conditional call forwarding" and
-record the code they give you on #11.
+The ring time can be 5, 10, 15, 20, 25 or 30 seconds; **15** is the value confirmed working on the
+test phone. If the carrier rejects a code, check their support page for "conditional call
+forwarding" and record the code they give you on #47.
 
 **Earlier draft error:** a ring-time form with `*11*` was wrong. Use `**61*number**seconds#`.
 
@@ -70,9 +70,37 @@ record the code they give you on #11.
    caller's number in **From**.
 5. Turn off forwarding with `##61#`.
 
-## Step 4 — Dad's phone (only after step 3 passes)
+## Step 4 — Dad's phone (the gate itself, only after step 3 passes)
 
-Repeat with Dad's handset, using his carrier's code. Do not use his phone for the first test.
+The test phone passed everything except the caller-ID check; this step is the actual G0b gate on
+Dad's real plan. Do not use Dad's phone for the dry run in steps 1–3.
+
+1. **Record the carrier first.** Note Dad's carrier and plan (e.g. EE, O2, Vodafone, Three, or an
+   MVNO) in the results table below. The codes are the standard GSM forms, but a few plans use
+   carrier-specific codes — if one is rejected, that is the one real risk, and it is better caught
+   here than on a live caller.
+2. **Set no-answer forwarding** on Dad's handset — in the Phone app dial `**61*+447533021710**15#`
+   and press call. The handset confirms the setting on screen.
+3. **Set unreachable forwarding** — dial `**62*+447533021710#` and press call.
+4. **Verify** with `*#61#` and `*#62#` — each shows where unanswered / unreachable calls now go.
+5. **Run one real call.** From a third number, call Dad's phone and let it ring out. The caller
+   should hear "Forwarding test received. Goodbye."
+6. **Check that `From` survives.** In Twilio **Monitor → Logs → Calls**, find the forwarded call
+   and confirm `From` shows the third caller's real number, not the Twilio number.
+7. **Record and decide.** Fill the "Dad's handset" table, then leave forwarding on only if Dad is
+   about to go live; otherwise turn it off with `##61#` and `##62#`.
+
+**Done when** every row in the "Dad's handset results" table is ticked (issue #47).
+
+### Dad's handset results (G0b)
+
+| Check | Result |
+|---|---|
+| Carrier and plan | |
+| `**61*…**15#` accepted (no-answer) | |
+| `**62*…` accepted (unreachable) | |
+| Forwarded call reaches Twilio | |
+| `From` shows the caller's number, not Twilio's | |
 
 ## Pass and fail
 
@@ -83,7 +111,7 @@ Repeat with Dad's handset, using his carrier's code. Do not use his phone for th
 | Forward never triggers | Carrier code or network issue. Try the carrier's code, then escalate |
 | Works on one network only | Record which networks pass; the MVP may need to support only those |
 
-## Record on #11
+## Record on #47
 
 - Carrier and network (for example EE, O2, Vodafone, Three, or a mobile virtual network)
 - Exact codes used and whether they were accepted
@@ -118,5 +146,8 @@ call-capture route (for example, a number the customer already uses as their bus
 
 ## Change history
 
+- **0.2 (2026-11-13)** — turned Step 4 into a Dad-ready day-of checklist (the gate itself), added a
+  blank "Dad's handset results" table, fixed the ring time to the confirmed 15 seconds, and
+  pointed the result-recording at #47.
 - **0.1 (2026-11-06)** — first version, written after testing the iPhone setting. Corrects the
   ring-time code and records that the built-in iPhone setting is unconditional only.
