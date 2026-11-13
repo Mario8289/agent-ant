@@ -1,0 +1,21 @@
+# Never send these into the Docker build context: the image must not carry secrets,
+# test fixtures, evals, or the dev virtualenv.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.python-version
+
+# Not needed to build the API image (the Dockerfile COPYs only the workspace).
+docs
+evals
+infra
+spikes
+*.md
