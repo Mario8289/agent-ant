@@ -49,9 +49,13 @@ retry-sms:
 retry-extractions:
     uv run --all-packages python scripts/retry_extractions.py
 
-# Redact outbound personal fields past the 30-day retention window (D-021)
+# Redact personal fields past their retention window (30d outbound, 90d raw/audit)
 purge:
     uv run --all-packages python scripts/purge_old_data.py
+
+# Erase one caller's personal data on request (D-027); e.g. `just erase +447000000000`
+erase number:
+    uv run --all-packages python scripts/erase_person.py {{number}}
 
 # Send one test alert to the configured Slack webhook (issue #94)
 test-slack:
