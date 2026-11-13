@@ -41,6 +41,10 @@ repoint:
 check-llm:
     uv run --all-packages python scripts/check_llm.py
 
+# Re-attempt failed SMS sends and dead-letter those that exhaust their retries
+retry-sms:
+    uv run --all-packages python scripts/retry_sms.py
+
 # Everything CI runs
 check: lint typecheck test
 

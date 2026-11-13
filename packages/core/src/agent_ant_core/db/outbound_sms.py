@@ -1,10 +1,12 @@
-"""Persistence of outbound auto-SMS (issue #73).
+"""Persistence of outbound auto-SMS (issues #73, #34).
 
 The send path writes a "sending" row before calling Twilio, then updates it with the SID or the
 error, so "did we text this caller, and did it deliver?" is answerable from our own database even
-after Twilio's logs are gone. The caller owns the transaction and commits around the network call.
+after Twilio's logs are gone. Failed sends can be retried a bounded number of times and then
+dead-lettered (#34). The caller owns the transaction and commits around the network call.
 """
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -12,11 +14,17 @@ from sqlalchemy.orm import Session
 
 from agent_ant_core.db.models import OutboundMessage
 
+# A failed send is retried up to this many attempts (including the first), then dead-lettered.
+MAX_SEND_ATTEMPTS = 3
+
+# A send callable: takes (to, body), returns the Twilio MessageSid, or raises on failure.
+SendFn = Callable[[str, str], str]
+
 
 def create_outbound_message(
     session: Session, *, raw_event_id: int, to: str, body: str
 ) -> OutboundMessage:
-    """Write the pre-send row and return it, flushed so ``id`` is set but not yet committed."""
+    """Write the pre-send row (first attempt) and return it, flushed so ``id`` is set."""
     row = OutboundMessage(raw_event_id=raw_event_id, to=to, body=body, status="sending")
     session.add(row)
     session.flush()
@@ -28,12 +36,62 @@ def mark_sent(message: OutboundMessage, twilio_sid: str) -> None:
     message.twilio_message_sid = twilio_sid
     message.status = "sent"
     message.sent_at = datetime.now(UTC)
+    message.error_code = None
 
 
 def mark_failed(message: OutboundMessage, error_code: str | None) -> None:
     """Record a failed send (Twilio raised, so there is no SID)."""
     message.status = "failed"
     message.error_code = error_code
+
+
+def retry_failed_sends(
+    session: Session, send: SendFn, *, max_attempts: int = MAX_SEND_ATTEMPTS
+) -> int:
+    """Re-attempt failed sends, dead-lettering those that exhaust their attempts.
+
+    Each failed message whose ``attempts`` is still under ``max_attempts`` is sent again; a
+    success records the new SID and clears the error, a failure keeps it ``failed`` and, once the
+    bound is reached, moves it to ``dead`` so it can be found and handled by hand. Returns how
+    many messages succeeded. The caller commits.
+    """
+    failed = (
+        session.execute(
+            select(OutboundMessage)
+            .where(
+                OutboundMessage.status == "failed",
+                OutboundMessage.attempts < max_attempts,
+            )
+            .order_by(OutboundMessage.created_at.asc())
+        )
+        .scalars()
+        .all()
+    )
+
+    succeeded = 0
+    for message in failed:
+        message.attempts += 1
+        try:
+            sid = send(message.to, message.body)
+        except Exception:
+            if message.attempts >= max_attempts:
+                message.status = "dead"
+            continue
+        mark_sent(message, sid)
+        succeeded += 1
+    return succeeded
+
+
+def list_failed_messages(session: Session, *, limit: int = 20) -> list[OutboundMessage]:
+    """Recent failed or dead sends, for the dashboard's failure panel."""
+    return list(
+        session.execute(
+            select(OutboundMessage)
+            .where(OutboundMessage.status.in_(("failed", "dead")))
+            .order_by(OutboundMessage.created_at.desc())
+            .limit(limit)
+        ).scalars()
+    )
 
 
 def apply_status_callback(

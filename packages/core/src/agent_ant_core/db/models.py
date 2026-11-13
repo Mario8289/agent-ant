@@ -187,5 +187,6 @@ class OutboundMessage(Base):
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, default="sending")
     error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
