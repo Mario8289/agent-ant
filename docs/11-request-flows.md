@@ -1,7 +1,7 @@
 ---
 title: Request Flows
 status: draft
-version: 0.5
+version: 0.6
 last_updated: 2026-11-13
 verified_against: 1a432df
 ---
@@ -307,7 +307,8 @@ The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so
 is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
 D-005). It has no JSON API and no auth yet — one page, four routes. It also renders the four
 business metrics (capture rate, reply rate, jobs booked, edit rate — D-022) at the top, computed
-by `agent_ant_core.metrics.compute_metrics`.
+by `agent_ant_core.metrics.compute_metrics`, and a failure panel listing failed/dead SMS sends
+(`db/outbound_sms.list_failed_messages`, D-023).
 
 ```mermaid
 sequenceDiagram
@@ -453,6 +454,7 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.6 | 2026-11-13 | Dashboard now shows the four metrics (D-022) and a failure panel for failed/dead sends (D-023) |
 | 0.5 | 2026-11-13 | Added outbound SMS persistence and the status callback route (D-021); resolved the delivery-status open question |
 | 0.4 | 2026-11-13 | Added STOP/HELP opt-out to the SMS reply flow (D-019); removed the resolved open question |
 | 0.3 | 2026-11-13 | Added human approval dashboard section (four routes, code map, editable-field table) |

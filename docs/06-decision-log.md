@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.16
+version: 0.17
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -63,6 +63,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-020 | Production hosting: AWS App Runner (containers) for the stateless API (#29) | accepted | 2026-11-13 |
 | D-021 | Outbound SMS is persisted (`outbound_messages`) with status callbacks and 30-day retention (#73) | accepted | 2026-11-13 |
 | D-022 | Business metrics frozen: capture rate, reply rate, jobs booked, edit rate (#30) | accepted | 2026-11-13 |
+| D-023 | Retry policy: failed SMS sends retried up to 3 attempts, then dead-lettered (#34) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -532,6 +533,27 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — the definitions are one module. Changing any of them after the first
   live read invalidates that read, so supersede instead (append a new entry).
 
+### D-023 — Retry policy: failed SMS sends retried up to 3 attempts, then dead-lettered (#34)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** #34 (hardening). A failed SMS send was recorded (D-021) but never retried, and
+  nothing surfaced it except a log line. The blocker to G0b is trust — Dad will not forward his
+  livelihood's calls to something that can silently drop a text — so a failed send must be visible
+  and recoverable.
+- **Decision:**
+  - A failed send (`status='failed'`) is retried up to **3 attempts** (including the first) via
+    `just retry-sms`; each retry bumps `outbound_messages.attempts`.
+  - After the bound, it is **dead-lettered** (`status='dead'`) and listed on the dashboard's
+    failure panel for manual handling.
+  - The retry is a command, not automatic — schedule it (cron / App Runner scheduled job) at
+    deploy. The dashboard panel is the MVP "alert"; email/Slack alerting is deferred to a later
+    #34 slice. Extraction failures are retried separately, also later.
+- **Consequences:** `outbound_messages.attempts` (migration 0007), `retry_failed_sends` and
+  `list_failed_messages` in `db/outbound_sms.py`, `scripts/retry_sms.py` + `just retry-sms`, and a
+  dashboard failure panel.
+- **Source:** #34; founder decision 2026-11-13; D-021.
+- **Reversible?:** cheap — `MAX_SEND_ATTEMPTS` is one constant.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -547,6 +569,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.17 (2026-11-13)** — D-023 accepted: failed SMS sends retried up to 3 attempts then
+  dead-lettered, with a dashboard failure panel (#34).
 - **0.16 (2026-11-13)** — D-022 accepted: the four business metrics frozen and exposed on the
   dashboard (#30).
 - **0.15 (2026-11-13)** — D-021 accepted: outbound SMS persisted with status callbacks and a
