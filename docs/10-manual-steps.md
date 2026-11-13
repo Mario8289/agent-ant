@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.18
+version: 0.19
 last_updated: 2026-11-13
 ---
 
@@ -95,6 +95,67 @@ data, and it is set per account, so it is awkward to change later.
 ### Repository setting: delete merged branches
 - [ ] Settings -> General -> "Automatically delete head branches". Merged PR branches
   currently stay on GitHub.
+
+### Deploy the API to AWS App Runner + Supabase (Week 4, #29)
+Blocks: a real customer's call reaching the service (#31). Hosting choice is AWS App Runner
+(D-020); the database is Supabase (docs/05) and the LLM is Bedrock (D-018). The app is
+stateless, so only the database holds customer data — Supabase's region is the residency
+surface, not the app host.
+
+**Supabase (Postgres)**
+
+- [ ] Create a Supabase project. Choose a region inside the EU/UK (e.g. London or a `eu-*`
+  region); the database holds caller numbers and message bodies, so keep it in EEA/adequate
+  geography. The free tier pauses after 7 days of inactivity and is 500 MB; for anything
+  beyond the Week 4 live test, move to a paid tier with a DPA (same reasoning as R4).
+- [ ] Copy the **direct connection** (or **session pooler**, port 5432) string from
+  Settings -> Database -> Connection string. Change the scheme to the psycopg driver the app
+  uses: `postgresql://…` becomes `postgresql+psycopg://…`. Keep `?sslmode=require` (Supabase
+  requires TLS). This becomes `DATABASE_URL`.
+- [ ] Run the migrations against it once, from the repo:
+  `DATABASE_URL="<the string>" uv run alembic upgrade head`. The app creates no schema itself;
+  a deploy without this step starts but every request 500s.
+
+**Image (ECR)**
+
+- [ ] Create a repository: `aws ecr create-repository --repository-name agent-ant-api --region eu-west-2`.
+- [ ] Log Docker in: `aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin <account>.dkr.ecr.eu-west-2.amazonaws.com`.
+- [ ] Build and push (the `Dockerfile` is at the repo root):
+  `docker build -t agent-ant-api .` then
+  `docker tag agent-ant-api:latest <account>.dkr.ecr.eu-west-2.amazonaws.com/agent-ant-api:latest`
+  and `docker push <account>.dkr.ecr.eu-west-2.amazonaws.com/agent-ant-api:latest`.
+
+**App Runner service**
+
+- [ ] Create a service from **Container registry** pointing at the ECR image. Port **8000**.
+  Let App Runner create the *service role* (ECR pull) automatically.
+- [ ] Create an **instance role** for Bedrock and attach it to the service. It needs the invoke
+  policy under **Reference -> Bedrock IAM policy**, narrowed to the model's ARN at lock-in (the
+  existing note). No `AWS_PROFILE` and no keys: boto3 in the container picks up the instance
+  role through the metadata service.
+- [ ] Set the health check path to `/health` (liveness — process is up). `/ready` also exists
+  and checks the database; keep it for external monitoring rather than App Runner's own check,
+  so a transient Supabase blip does not restart the instance.
+- [ ] Add environment variables:
+  - `ENVIRONMENT=production`, `LOG_LEVEL=INFO`
+  - `DATABASE_URL` (Supabase string from above)
+  - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `BUSINESS_NAME`
+  - `PUBLIC_BASE_URL=https://<the App Runner service URL>` (no trailing slash — Twilio signs
+    the exact URL, so a mismatch 403s every real request)
+  - `LLM_PROVIDER=bedrock`, `LLM_MODEL=eu.anthropic.claude-sonnet-4-6`, `AWS_REGION=eu-west-2`
+  - Put `TWILIO_AUTH_TOKEN` and `DATABASE_URL` in AWS Secrets Manager and reference them as
+    `secretsmanager:` ARNs; the rest are safe as plain variables. Do **not** set `AWS_PROFILE`
+    or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.
+
+**Point Twilio at the deployed service**
+
+- [ ] With the service live, `curl https://<service-url>/health` returns `{"status":"ok",
+  "environment":"production"}` and `/ready` returns 200 (database reachable).
+- [ ] Repoint the Twilio webhooks to `https://<service-url>/webhooks/missed-call` and
+  `/webhooks/sms-reply` (`just repoint`, or by hand — see **Reference -> Setting both webhooks
+  through the API**), and set `PUBLIC_BASE_URL` to the same base.
+- [ ] Check end-to-end with a real phone: a missed call logs `stored` and sends the text; a
+  reply logs `stored` and produces a captured job on the dashboard.
 
 ## Done
 
@@ -292,6 +353,8 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.19 (2026-11-13)** — added the Week 4 deployment entry: Supabase, ECR, App Runner
+  (D-020), secrets and the Twilio repoint.
 - **0.18 (2026-11-13)** — HELP/STOP opt-out implemented (#72, D-019); removed the deferral note.
 - **0.17 (2026-11-10)** — D-016: extraction model is `eu.anthropic.claude-sonnet-4-6` (newer
   Claude models account-gated for `817210752440`); noted the IAM policy name is stale.

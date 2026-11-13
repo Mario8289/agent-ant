@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.13
+version: 0.14
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -60,6 +60,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-017 | H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a) | accepted | 2026-11-13 |
 | D-018 | LLM provider locked: AWS Bedrock, `eu.anthropic.claude-sonnet-4-6` (R4) | accepted | 2026-11-13 |
 | D-019 | HELP/STOP opt-out: handle ourselves, confirm STOP and reply HELP (fixed templates) | accepted | 2026-11-13 |
+| D-020 | Production hosting: AWS App Runner (containers) for the stateless API (#29) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -438,6 +439,36 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — delete a table and two webhook branches. Re-adopting Twilio Advanced
   Opt-Out later is possible but moves state out of Postgres.
 
+### D-020 — Production hosting: AWS App Runner (containers) for the stateless API (#29)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** #29 (deployment) needed a home for the stateless FastAPI app. Spike 07 compared
+  Vercel, AWS App Runner, ECS Fargate, Fly.io, Render and Railway against the workload's real
+  constraints, not platform marketing. Two requirements rule out serverless: the in-process
+  `BackgroundTasks` (extraction + SMS send run after the 200, in the same process) and LangGraph
+  `interrupt()` (D-008, a human-approval run is held and resumed by a live process). Vercel runs
+  Python/FastAPI but its serverless model reclaims the process after the response, cutting off
+  exactly that work.
+- **Decision:** Host the API on **AWS App Runner** — managed, long-running containers, no
+  Kubernetes. The database stays Supabase (docs/05) and the LLM stays Bedrock (D-018); this
+  decision is only the stateless app layer. Rationale: a long-running process fits the code as
+  written, it is the same AWS account as Bedrock (one bill, one IAM story), and the Activate
+  credits offset hosting. Fly.io and Render are the accepted fallback.
+- **Consequences:**
+  - New `Dockerfile` and `.dockerignore`; an ECR repository; an App Runner service with a
+    `/ready` readiness check (DB connectivity) alongside the existing `/health`.
+  - Bedrock auth moves from `AWS_PROFILE` (`~/.aws/credentials`) to an **App Runner instance
+    role** with the Bedrock invoke permission — boto3's default credential chain picks up the
+    role, so no AWS keys live in the container.
+  - Secrets (Twilio, `DATABASE_URL`) are injected as App Runner environment variables, sensitive
+    values referenced from Secrets Manager. Migrations run against Supabase as a separate step.
+  - The app is stateless and Dockerized, so moving to Fly.io or Render later is a config change,
+    not a rewrite (spike 07).
+- **Source:** Founder decision, 2026-11-13; spike 07; docs/04 (Activate credits), D-005, D-008,
+  D-018.
+- **Reversible?:** cheap — the app is host-agnostic; a move is a deploy-config swap plus re-pointing
+  the same env vars. The sticky choices (Supabase, Bedrock) are orthogonal and unchanged.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -453,6 +484,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.14 (2026-11-13)** — D-020 accepted: AWS App Runner for the stateless API (spike 07).
 - **0.13 (2026-11-13)** — D-019 accepted: HELP/STOP opt-out handled ourselves (confirm STOP,
   reply HELP), recorded as the pre-live-traffic decision for #72.
 - **0.12 (2026-11-13)** — D-018 accepted: Bedrock locked as the DPA-backed provider
