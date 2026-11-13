@@ -1,8 +1,8 @@
 ---
 title: Request Flows
 status: draft
-version: 0.2
-last_updated: 2026-11-09
+version: 0.3
+last_updated: 2026-11-13
 verified_against: 1a432df
 ---
 
@@ -28,6 +28,7 @@ API source has moved since, distrust the diagrams before the code.
 | Someone rings and we miss it — what happens? | [Missed call: happy path](#missed-call-happy-path) | `webhooks.py::missed_call` |
 | Why doesn't a Twilio retry send a second text? | [Duplicate delivery](#duplicate-delivery) | `idempotency.py::persist_raw_event` |
 | The customer replies — what happens? | [SMS reply](#sms-reply) | `webhooks.py::sms_reply` |
+| The tradesperson reviews a captured job — what happens? | [Human approval dashboard](#human-approval-dashboard) | `dashboard.py::dashboard` |
 | What if the signature is wrong, or Twilio is down? | [Failure paths](#failure-paths) | `security.py`, `sms.py` |
 | What does a row actually look like? | [Row shapes](#row-shapes) | `models.py::RawEvent` |
 
@@ -242,6 +243,78 @@ configured the task is skipped entirely, so a reply is still stored and answered
 `Body` is not its own column: Twilio's field set changes per message, so JSONB absorbs that.
 Extraction reads it as `row.payload["Body"]` (or `payload->>'Body'` in SQL).
 
+## Human approval dashboard
+
+The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so. The dashboard
+is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
+D-005). It has no JSON API and no auth yet — one page, four routes.
+
+```mermaid
+sequenceDiagram
+    participant T as Tradesperson
+    participant D as dashboard.py
+    participant A as approval.py
+    participant DB as Postgres
+
+    T->>D: GET /dashboard
+    D->>A: list_captured_jobs(session)
+    A->>DB: SELECT * FROM job_records WHERE status = 'captured'
+    DB-->>A: rows (oldest first)
+    A-->>D: jobs
+    D-->>T: render templates/dashboard.html
+
+    T->>D: POST /jobs/{id}/edit (or /approve, /reject)
+    D->>A: edit_job / approve_job / reject_job
+    A->>DB: UPDATE job_records SET status = ...
+    A-->>D: job | None
+    D-->>T: 303 → /dashboard
+```
+
+Three actions, one invariant: they only touch jobs whose `status` is `captured`. A job that is
+absent or already decided is left alone (the helpers return `None`) and the redirect still lands
+back on the dashboard.
+
+- **Approve** (`POST /jobs/{id}/approve`) — mark the captured job `approved` as-is.
+- **Reject** (`POST /jobs/{id}/reject`) — mark it `rejected`; not a real job after all.
+- **Edit** (`POST /jobs/{id}/edit`) — apply corrections to the editable fields, then approve. A
+  form field left empty means "clear the field". The human edit is recorded as a before/after
+  diff in `human_edits`, but only for fields that actually changed, so the edit rate counts real
+  corrections rather than a full-field echo (R6). The diff is linked to the `llm_output_audits`
+  row that produced the job; if there is none, the edit still applies but is not logged.
+
+None of the helpers commit — the route owns the transaction and calls `session.commit()`, the
+same boundary as `webhooks.py`.
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| Router mount | `main.py::create_app` — `include_router(dashboard_router)` |
+| Route (list) | `apps/api/src/agent_ant_api/dashboard.py::dashboard` |
+| Route (approve / reject / edit) | `dashboard.py::approve`, `::reject`, `::edit` |
+| List captured jobs | `packages/core/src/agent_ant_core/db/approval.py::list_captured_jobs` |
+| Approve | `approval.py::approve_job` |
+| Reject | `approval.py::reject_job` |
+| Edit + approve | `approval.py::edit_job` |
+| Human edit diff | `agent_ant_core/audit/records.py::record_human_edit` |
+| Template | `apps/api/src/agent_ant_api/templates/dashboard.html` |
+| Session per request | `dashboard.py::get_session` → `db/session.py::get_sessionmaker` |
+
+### Editable field → column
+
+| Form field | Editable? | Column |
+|---|---|---|
+| `name` | yes | `job_records.name` |
+| `job_type` | yes | `job_records.job_type` |
+| `location` | yes | `job_records.location` |
+| `preferred_date` | yes | `job_records.preferred_date` |
+| `urgency` | yes (one of `unknown`/`low`/`medium`/`high`) | `job_records.urgency` |
+| — | no (trusted field) | `job_records.caller_number` |
+
+Only the five extracted fields are editable. Trusted fields (`caller_number`, timestamps) come
+from provider metadata and are never offered for correction — the human is reviewing the LLM's
+output, not the inbound record.
+
 ## Failure paths
 
 ```mermaid
@@ -324,4 +397,6 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3 | 2026-11-13 | Added human approval dashboard section (four routes, code map, editable-field table) |
+| 0.2 | 2026-11-09 | Wired extraction into the SMS reply flow (recorded retroactively) |
 | 0.1 | 2026-11-08 | First version: missed call, duplicate delivery, SMS reply, failure paths, row shapes |

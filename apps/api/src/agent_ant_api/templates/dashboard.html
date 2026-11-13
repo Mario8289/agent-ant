@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Jobs to review</title>
+</head>
+<body>
+  <h1>Jobs to review</h1>
+  {% if not jobs %}
+    <p>Nothing waiting.</p>
+  {% endif %}
+  {% for job in jobs %}
+    <form method="post" action="/jobs/{{ job.id }}/edit" style="margin-bottom: 1.5em">
+      <p><strong>{{ job.raw_message }}</strong></p>
+      <label>Name <input name="name" value="{{ job.name or '' }}"></label>
+      <label>Job <input name="job_type" value="{{ job.job_type or '' }}"></label>
+      <label>Where <input name="location" value="{{ job.location or '' }}"></label>
+      <label>When <input name="preferred_date" value="{{ job.preferred_date or '' }}"></label>
+      <label>Urgency
+        <select name="urgency">
+          {% for urgency in ["unknown", "low", "medium", "high"] %}
+            <option value="{{ urgency }}" {% if job.urgency == urgency %}selected{% endif %}>{{ urgency }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Save &amp; approve</button>
+      <button type="submit" formaction="/jobs/{{ job.id }}/approve">Approve</button>
+      <button type="submit" formaction="/jobs/{{ job.id }}/reject">Reject</button>
+    </form>
+  {% endfor %}
+</body>
+</html>
