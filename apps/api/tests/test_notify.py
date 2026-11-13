@@ -1,6 +1,7 @@
 """Support alerting to Slack (issue #94): the notifier posts and degrades safely."""
 
 import json
+import urllib.error
 import urllib.request
 from typing import cast
 
@@ -41,6 +42,24 @@ def test_post_to_slack_swallows_errors(monkeypatch) -> None:
         raise OSError("slack down")
 
     monkeypatch.setattr(urllib.request, "urlopen", boom)
+
+    post_to_slack("https://example.com/slack-webhook", "hello")  # must not raise
+
+
+def test_post_to_slack_surfaces_http_error_body(monkeypatch) -> None:
+    import io
+    from email.message import Message
+
+    def http_error(request: urllib.request.Request, timeout: object | None = None) -> None:
+        raise urllib.error.HTTPError(
+            "https://example.com/slack-webhook",
+            403,
+            "Forbidden",
+            Message(),
+            io.BytesIO(b"invalid_token"),
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", http_error)
 
     post_to_slack("https://example.com/slack-webhook", "hello")  # must not raise
 
