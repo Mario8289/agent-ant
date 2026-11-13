@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.21
+version: 0.22
 last_updated: 2026-11-13
 ---
 
@@ -168,7 +168,10 @@ days.
   failed extractions) to run every few minutes against the deployed database — an App Runner
   scheduled job, an EventBridge rule, or a cron on the same image. Both scripts live in
   `scripts/` and need the same env as the service (`DATABASE_URL`, Twilio, Bedrock).
-- [ ] Schedule `just purge` (redact outbound `to`/`body` older than 30 days) daily.
+- [ ] Schedule `just purge` daily. It redacts outbound `to`/`body` after 30 days (D-021, D-025)
+  and `raw_events.payload`/`caller_number` + `llm_output_audits.raw_output` after 90 days (D-027).
+- [ ] Keep `just erase <number>` in the runbook for a right-to-erasure request (D-027); it is
+  run by hand, not scheduled.
 
 ### Wire up Slack support alerting (Week 5, #94)
 
@@ -379,6 +382,8 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.22 (2026-11-13)** — the purge step now covers the 90-day `raw_events`/audit redaction, and
+  `just erase <number>` is recorded for right-to-erasure requests (D-027, #95).
 - **0.21 (2026-11-13)** — added the Slack support-alerting step (D-026): create the incoming
   webhook, set `SLACK_WEBHOOK_URL`, verify with `just test-slack` (#94).
 - **0.20 (2026-11-13)** — added the Week 5 step to schedule the retry and purge commands (#34,
