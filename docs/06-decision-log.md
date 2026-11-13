@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.17
+version: 0.18
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -64,6 +64,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-021 | Outbound SMS is persisted (`outbound_messages`) with status callbacks and 30-day retention (#73) | accepted | 2026-11-13 |
 | D-022 | Business metrics frozen: capture rate, reply rate, jobs booked, edit rate (#30) | accepted | 2026-11-13 |
 | D-023 | Retry policy: failed SMS sends retried up to 3 attempts, then dead-lettered (#34) | accepted | 2026-11-13 |
+| D-024 | Retry policy: failed extractions retried up to 3 attempts, then dead-lettered (#34) | accepted | 2026-11-13 |
+| D-025 | Retention purge: outbound personal fields redacted at 30 days; wider retention deferred (#34) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -554,6 +556,55 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Source:** #34; founder decision 2026-11-13; D-021.
 - **Reversible?:** cheap — `MAX_SEND_ATTEMPTS` is one constant.
 
+### D-024 — Retry policy: failed extractions retried up to 3 attempts, then dead-lettered (#34)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** #34 (hardening). A failed extraction — invalid output after its bounded repairs, or a
+  raised provider call — was swallowed by the background task: the invalid case left only an audit
+  row, the raised case left nothing but a log line. Neither was ever retried, and an extraction
+  failure is the higher-stakes gap of the two (a lost *lead*, versus a lost auto-text). Same trust
+  argument as D-023, now for the job itself.
+- **Decision:**
+  - `raw_events` gains `extraction_attempts` (default 0) and `extraction_status` (`done` /
+    `failed` / `dead`; `NULL` = never attempted). Voice calls are never extracted, so they stay
+    0 / `NULL`.
+  - Every attempt — the background task's first run included — bumps `extraction_attempts` and
+    records `done` (a job was captured) or `failed` (invalid, or the provider raised). A raised
+    call is rolled back and re-marked `failed` in a fresh transaction, so an outage surfaces as a
+    retryable row instead of vanishing.
+  - `retry_failed_extractions` (`just retry-extractions`) re-runs extraction over every reply that
+    is not `done` and under `MAX_EXTRACTION_ATTEMPTS` (3); a reply still `failed` at the bound is
+    promoted to `dead` and shown on the dashboard's failure panel.
+  - Idempotency is unchanged: `persist_job_record` (`INSERT … ON CONFLICT DO NOTHING`) means a
+    concurrent retry cannot create a second job.
+- **Consequences:** migration 0008; `db/extraction.py` (`candidate_replies`,
+  `list_failed_extractions`); `extraction.py` (`_extract_one`, `retry_failed_extractions`);
+  `scripts/retry_extractions.py` + `just retry-extractions`; the dashboard "failed extractions"
+  panel.
+- **Source:** #34; D-023 (the SMS analogue); founder decision 2026-11-13.
+- **Reversible?:** cheap — `MAX_EXTRACTION_ATTEMPTS` is one constant.
+
+### D-025 — Retention purge: outbound personal fields redacted at 30 days; wider retention deferred (#34)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** D-021 fixed the 30-day line for `outbound_messages.to`/`body` but left the purge
+  automation to #34. The wider question — how long to keep `raw_events.payload` and
+  `job_records.raw_message`, which also carry caller numbers and message bodies — is *not*
+  answered by D-021 and cannot be assumed to be 30 days.
+- **Decision:**
+  - `purge_personal_data` (`just purge`) clears `outbound_messages.to` and `body` (sets to `""`)
+    once a row is older than 30 days, keeping the SID, status, error code and timestamps for
+    aggregate metrics. Idempotent: already-redacted rows are skipped.
+  - The wider retention of `raw_events`, `job_records` and `llm_output_audits` is **deferred** to a
+    separate founder decision (D-0xx): those tables are the business data itself — the job record
+    is the product, not an operational log — so a blanket 30-day purge would destroy the record of
+    work done.
+- **Consequences:** `purge_personal_data` in `db/outbound_sms.py`; `scripts/purge_old_data.py` +
+  `just purge`; scheduled alongside the retry commands.
+- **Source:** #34; D-021; founder decision 2026-11-13.
+- **Reversible?:** cheap — a constant and a script. (The redaction itself is one-way for the row,
+  which is the point.)
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -569,6 +620,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.18 (2026-11-13)** — D-024 and D-025 accepted: failed extractions retried then dead-lettered,
+  and the 30-day outbound purge automated (wider retention deferred). Completes #34.
 - **0.17 (2026-11-13)** — D-023 accepted: failed SMS sends retried up to 3 attempts then
   dead-lettered, with a dashboard failure panel (#34).
 - **0.16 (2026-11-13)** — D-022 accepted: the four business metrics frozen and exposed on the

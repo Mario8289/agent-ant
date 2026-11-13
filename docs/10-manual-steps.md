@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.19
+version: 0.20
 last_updated: 2026-11-13
 ---
 
@@ -156,6 +156,19 @@ surface, not the app host.
   through the API**), and set `PUBLIC_BASE_URL` to the same base.
 - [ ] Check end-to-end with a real phone: a missed call logs `stored` and sends the text; a
   reply logs `stored` and produces a captured job on the dashboard.
+
+### Schedule the retry and purge commands (Week 5, #34)
+
+Blocks: nothing silently lost, and personal fields not kept past their line. The recovery and
+retention commands are scripts, not self-scheduling (D-023, D-024, D-025), so until they run on a
+schedule a failed send or extraction sits `failed` forever and outbound `to`/`body` age past 30
+days.
+
+- [ ] Schedule `just retry-sms` (re-attempt failed sends) and `just retry-extractions` (re-run
+  failed extractions) to run every few minutes against the deployed database — an App Runner
+  scheduled job, an EventBridge rule, or a cron on the same image. Both scripts live in
+  `scripts/` and need the same env as the service (`DATABASE_URL`, Twilio, Bedrock).
+- [ ] Schedule `just purge` (redact outbound `to`/`body` older than 30 days) daily.
 
 ## Done
 
@@ -353,6 +366,8 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.20 (2026-11-13)** — added the Week 5 step to schedule the retry and purge commands (#34,
+  D-023/D-024/D-025).
 - **0.19 (2026-11-13)** — added the Week 4 deployment entry: Supabase, ECR, App Runner
   (D-020), secrets and the Twilio repoint.
 - **0.18 (2026-11-13)** — HELP/STOP opt-out implemented (#72, D-019); removed the deferral note.
