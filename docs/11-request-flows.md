@@ -1,7 +1,7 @@
 ---
 title: Request Flows
 status: draft
-version: 0.3
+version: 0.4
 last_updated: 2026-11-13
 verified_against: 1a432df
 ---
@@ -215,15 +215,26 @@ in `agent_ant_missed_call.processor`), and writes a `job_records` row (status `c
 `llm_output_audits` row. A failed extraction writes the audit row only. With no provider
 configured the task is skipped entirely, so a reply is still stored and answered.
 
+**STOP / HELP are handled before extraction** (#72, D-019). The route checks the normalised
+`Body` against the opt-out and help keywords; a match never reaches the LLM. STOP records the
+caller in `opt_outs` and confirms with a fixed one-line text; HELP answers with the fixed
+reply-to-here instructions. Both are fixed templates (D-004), sent through the same
+`SmsSender`. The opt-out then suppresses future missed-call texts (`missed_call` checks
+`opt_outs` before scheduling), but the missed call itself is still stored so the tradesperson
+can ring back.
+
 ### Code map
 
 | Step | Symbol |
 |---|---|
 | Route | `webhooks.py::sms_reply` |
 | Related-call lookup | `webhooks.py::sms_reply` — the `select(RawEvent.id)` |
+| STOP/HELP keyword check | `sms.py::is_stop_keyword`, `::is_help_keyword` |
+| Opt-out record | `db/opt_out.py::record_opt_out` → `models.py::OptOut` (`opt_outs`) |
+| Opt-out lookup | `db/opt_out.py::is_opted_out` (called from `missed_call`) |
 | Insert | `idempotency.py::persist_raw_event` |
 | Self-referencing FK | `models.py::RawEvent.related_event_id` |
-| Migration | `migrations/versions/…0002…` (adds `related_event_id`) |
+| Migration | `migrations/versions/…0002…` (`related_event_id`), `…0005…` (`opt_outs`) |
 | Provider seam | `extraction.py::get_llm` — returns `LLM \| None` (None until Bedrock lands) |
 | Session factory | `extraction.py::get_session_factory` |
 | Background task | `extraction.py::extract_reply` |
@@ -385,8 +396,6 @@ best guess, not an invariant.
 
 ## Open questions
 
-- **STOP / HELP.** Both arrive at `/webhooks/sms-reply` and are currently stored as ordinary
-  replies. They must not reach extraction. Needs an issue before live traffic.
 - **Delivery status callbacks.** Without them, "text never arrived" and "text ignored" look
   identical, so H6 (reply rate) cannot separate the two. Needs an issue before Week 4.
 - **Reply lookup index.** `(source, caller_number, received_at DESC)` when the table grows.
@@ -397,6 +406,7 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4 | 2026-11-13 | Added STOP/HELP opt-out to the SMS reply flow (D-019); removed the resolved open question |
 | 0.3 | 2026-11-13 | Added human approval dashboard section (four routes, code map, editable-field table) |
 | 0.2 | 2026-11-09 | Wired extraction into the SMS reply flow (recorded retroactively) |
 | 0.1 | 2026-11-08 | First version: missed call, duplicate delivery, SMS reply, failure paths, row shapes |

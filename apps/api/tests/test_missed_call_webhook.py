@@ -15,10 +15,16 @@ from sqlalchemy.orm import Session
 from twilio.request_validator import RequestValidator
 
 from agent_ant_api.main import create_app
-from agent_ant_api.sms import SmsSender, build_missed_call_message, get_sms_sender
+from agent_ant_api.sms import (
+    SmsSender,
+    build_help_reply,
+    build_missed_call_message,
+    build_stop_confirmation,
+    get_sms_sender,
+)
 from agent_ant_api.webhooks import get_session
 from agent_ant_core.config import Settings, get_settings
-from agent_ant_core.db.models import RawEvent
+from agent_ant_core.db.models import OptOut, RawEvent
 
 TOKEN = "test_token"
 PATH = "/webhooks/missed-call"
@@ -186,3 +192,61 @@ def test_reply_with_no_missed_call_is_stored_unlinked(session: Session) -> None:
 
     assert response.status_code == 200
     assert session.execute(select(RawEvent)).scalar_one().related_event_id is None
+
+
+# --- STOP / HELP (issue #72) ---------------------------------------------------------------
+
+
+def _post_reply(client: TestClient, body: str) -> None:
+    form = {**REPLY, "Body": body}
+    url = str(client.base_url).rstrip("/") + REPLY_PATH
+    assert client.post(REPLY_PATH, data=form, headers=_sign(url, form)).status_code == 200
+
+
+def test_stop_records_opt_out_and_confirms(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    _post_reply(client, "STOP")
+
+    assert session.get(OptOut, FORM["From"]) is not None
+    assert sms.sent == [(FORM["From"], build_stop_confirmation("Dave's Joinery"))]
+
+
+def test_help_replies_without_opting_out(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    _post_reply(client, "HELP")
+
+    assert session.get(OptOut, FORM["From"]) is None
+    assert sms.sent == [(FORM["From"], build_help_reply("Dave's Joinery"))]
+
+
+def test_stop_is_not_answered_by_a_second_auto_text(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms)
+    _post_reply(client, "STOP")
+    _post_reply(client, "STOP")  # duplicate delivery must not confirm twice
+
+    assert len(sms.sent) == 1
+
+
+def test_stop_keyword_ignores_case_and_whitespace(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms)
+    _post_reply(client, "  stop ")
+
+    assert session.get(OptOut, FORM["From"]) is not None
+    assert len(sms.sent) == 1
+
+
+def test_opted_out_caller_is_not_texted_on_a_missed_call(session: Session) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms)
+    _post_reply(client, "STOP")
+
+    response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
+    assert response.status_code == 200
+
+    # Only the STOP confirmation went out; the missed-call text was suppressed.
+    assert sms.sent == [(FORM["From"], build_stop_confirmation(None))]
+    assert all(body != build_missed_call_message(None) for _, body in sms.sent)

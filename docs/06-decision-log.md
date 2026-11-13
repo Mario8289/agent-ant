@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.12
+version: 0.13
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -59,6 +59,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-016 | Extraction model: Claude Sonnet 4.6 for now (newer models account-gated) | accepted | 2026-11-10 |
 | D-017 | H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a) | accepted | 2026-11-13 |
 | D-018 | LLM provider locked: AWS Bedrock, `eu.anthropic.claude-sonnet-4-6` (R4) | accepted | 2026-11-13 |
+| D-019 | HELP/STOP opt-out: handle ourselves, confirm STOP and reply HELP (fixed templates) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -407,6 +408,36 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — the seam keeps providers swappable; re-locking another provider means
   re-running the golden set against it.
 
+### D-019 — HELP/STOP opt-out: handle ourselves, confirm STOP and reply HELP (fixed templates)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** Twilio's GB SMS guidance expects `HELP`/`STOP` support. The fixed missed-call
+  template (D-004) had neither, so a caller had no documented way to opt out; #72 tracked it. The
+  repo sends from a Twilio UK long code, which Twilio's free opt-out handling does not cover, so
+  the real choice was self-handle versus Twilio's paid Advanced Opt-Out.
+- **Decision:**
+  - **Handle opt-out ourselves**, not Twilio Advanced Opt-Out: one service, one Postgres (D-005),
+    the state stays visible, and no per-number add-on cost. An `opt_outs` table keyed on
+    `caller_number` records the opt-out; a caller is matched on the exact normalised body.
+  - **Confirm STOP and answer HELP**, each with a fixed one-line template (D-004: the AI never
+    writes free text). STOP confirms the opt-out; HELP repeats the "reply with name / job /
+    where" instruction.
+  - **Opt-out suppresses the auto-text, never the record.** A missed call from an opted-out number
+    is still stored in `raw_events`, so the tradesperson sees it and can ring back; no lead is
+    silently lost. Suppression applies only to the SMS.
+  - Keywords: `STOP`, `STOPALL`, `UNSUBSCRIBE`, `CANCEL`, `END`, `QUIT` opt out; `HELP` asks for
+    help. Matching is case- and whitespace-insensitive, and only the exact keyword matches, so a
+    normal reply like "help fix the tap" is untouched.
+- **Consequences:**
+  - `sms_reply` handles STOP/HELP before extraction, so they never reach the LLM or produce a job
+    row. A STOP records the opt-out idempotently; a duplicate delivery confirms nothing twice.
+  - `missed_call` checks `opt_outs` before scheduling the text.
+  - New migration `0005` (`opt_outs`), a `db/opt_out.py` module, and tests covering idempotency,
+    the STOP/HELP templates, and the "no second auto-text after STOP" guarantee.
+- **Source:** Founder decision, 2026-11-13; Twilio GB SMS guidelines; D-004, D-005.
+- **Reversible?:** cheap — delete a table and two webhook branches. Re-adopting Twilio Advanced
+  Opt-Out later is possible but moves state out of Postgres.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -422,6 +453,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.13 (2026-11-13)** — D-019 accepted: HELP/STOP opt-out handled ourselves (confirm STOP,
+  reply HELP), recorded as the pre-live-traffic decision for #72.
 - **0.12 (2026-11-13)** — D-018 accepted: Bedrock locked as the DPA-backed provider
   (`eu.anthropic.claude-sonnet-4-6`), closing R4's "free tier" exposure.
 

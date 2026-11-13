@@ -42,6 +42,8 @@ def engine() -> Iterator[Engine]:
 @pytest.fixture
 def session(engine: Engine) -> Iterator[Session]:
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE raw_events, job_records, llm_output_audits, human_edits"))
+        conn.execute(
+            text("TRUNCATE raw_events, job_records, llm_output_audits, human_edits, opt_outs")
+        )
     with Session(engine) as db:
         yield db
