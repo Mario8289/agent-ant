@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.21
+version: 0.22
 last_updated: 2026-11-13
 ---
 
@@ -157,18 +157,57 @@ surface, not the app host.
 - [ ] Check end-to-end with a real phone: a missed call logs `stored` and sends the text; a
   reply logs `stored` and produces a captured job on the dashboard.
 
-### Schedule the retry and purge commands (Week 5, #34)
+### Schedule the retry and purge commands (Week 5, #96)
 
 Blocks: nothing silently lost, and personal fields not kept past their line. The recovery and
 retention commands are scripts, not self-scheduling (D-023, D-024, D-025), so until they run on a
 schedule a failed send or extraction sits `failed` forever and outbound `to`/`body` age past 30
-days.
+days. The scheduler is committed as a CDK app in `infra/cdk/` (D-028): three EventBridge Scheduler
+schedules, each running a one-off ECS Fargate task on the same image as the API — `retry-sms` and
+`retry-extractions` every ~5 minutes, `purge` daily at 03:00 UTC. The dead-letter alert (D-026) and
+the reply body on the failure panel ride with it.
 
-- [ ] Schedule `just retry-sms` (re-attempt failed sends) and `just retry-extractions` (re-run
-  failed extractions) to run every few minutes against the deployed database — an App Runner
-  scheduled job, an EventBridge rule, or a cron on the same image. Both scripts live in
-  `scripts/` and need the same env as the service (`DATABASE_URL`, Twilio, Bedrock).
-- [ ] Schedule `just purge` (redact outbound `to`/`body` older than 30 days) daily.
+One-time prerequisite (per account):
+
+- [ ] Bootstrap CDK in the member account `817210752440`, region `eu-west-2`:
+  `cd infra/cdk && npx --yes aws-cdk@latest bootstrap aws://817210752440/eu-west-2`. This creates
+  the `CDKToolkit` stack (an S3 bucket plus deploy roles) that `cdk deploy` writes through. Do it
+  once, before the first synth/deploy.
+
+Then deploy the stack. The `-c` values are listed in `infra/cdk/README.md`; collect them first:
+
+- [ ] Gather the `-c` flags: the ECR `imageUri` from the Week 4 deploy
+  (`<account>.dkr.ecr.eu-west-2.amazonaws.com/agent-ant-api:latest`); the two Secrets Manager
+  **ARNs** for `DATABASE_URL` and `TWILIO_AUTH_TOKEN`; `TWILIO_ACCOUNT_SID`; `TWILIO_FROM_NUMBER`;
+  and the VPC id (the account's default VPC, from the VPC console). Pass the secret **ARNs**, never
+  the secret values themselves — an ARN is not a secret. Also pass `businessName` and
+  `publicBaseUrl` (matching the App Runner service) so retried sends carry the business name and
+  the status callback; they are optional but should mirror the service.
+- [ ] `just cdk-synth -c accountId=817210752440 -c awsRegion=eu-west-2 -c imageUri=… -c
+  databaseUrlSecretArn=… -c twilioAuthTokenSecretArn=… -c twilioAccountSid=… -c
+  twilioFromNumber=… -c vpcId=…` and skim the generated template: three
+  `AWS::Scheduler::Schedule` resources and three task-definition families
+  (`agent-ant-retry-sms`, `agent-ant-retry-extractions`, `agent-ant-purge`).
+- [ ] `just cdk-diff` with the same flags, and confirm it only **adds** — it must not touch the
+  App Runner service, ECR repository or any existing resource.
+- [ ] `just cdk-deploy` with the same flags. This creates the ECS cluster, the three task
+  definitions, the execution/task IAM roles and the three schedules.
+
+Verify end-to-end:
+
+- [ ] Open EventBridge → Scheduler in eu-west-2 and confirm the three schedules exist and are
+  `Enabled`.
+- [ ] Run `retry-sms` once by hand (select the schedule → **Actions** → **Run once**, or the
+  equivalent `aws scheduler` call) and watch CloudWatch Logs `/aws/ecs/agent-ant-retry-sms` for the
+  `retried N failed send(s)…` line. Repeat for `retry-extractions` (log group
+  `/aws/ecs/agent-ant-retry-extractions`, line `recovered N job(s)…`).
+- [ ] Run `purge` once and confirm the task exits cleanly (`/aws/ecs/agent-ant-purge`,
+  `redacted N outbound message(s)`, usually `0` this early).
+- [ ] Confirm the dead-letter alert: force one send past its retry bound, run `retry-sms`, and
+  check the `#agent-ant-alerts` Slack message appears carrying the trigger SID, not the number or
+  body (D-026, D-028).
+
+Tear down with `just cdk-destroy` (same flags) if the stack must go.
 
 ### Wire up Slack support alerting (Week 5, #94)
 
@@ -379,6 +418,9 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.22 (2026-11-13)** — the Week 5 scheduler step is now a concrete CDK procedure
+  (`infra/cdk/`, D-028): `cdk bootstrap`, synth/diff/deploy with `-c` flags, and an E2E
+  verification checklist (#96).
 - **0.21 (2026-11-13)** — added the Slack support-alerting step (D-026): create the incoming
   webhook, set `SLACK_WEBHOOK_URL`, verify with `just test-slack` (#94).
 - **0.20 (2026-11-13)** — added the Week 5 step to schedule the retry and purge commands (#34,

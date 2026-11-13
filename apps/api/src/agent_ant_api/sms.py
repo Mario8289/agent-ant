@@ -19,7 +19,7 @@ from twilio.rest import Client
 
 from agent_ant_api.notify import notify_support
 from agent_ant_core.config import Settings, get_settings
-from agent_ant_core.db.models import RawEvent
+from agent_ant_core.db.models import OutboundMessage, RawEvent
 from agent_ant_core.db.outbound_sms import create_outbound_message, mark_failed, mark_sent
 
 logger = logging.getLogger(__name__)
@@ -247,4 +247,22 @@ def send_help_reply(
         trigger_sid=message_sid,
         to=to,
         body=build_help_reply(business_name),
+    )
+
+
+def alert_dead_letter(session: Session, message: OutboundMessage) -> None:
+    """Alert support that a send fully dead-lettered (issue #96).
+
+    D-023 dead-letters a send once it has exhausted ``MAX_SEND_ATTEMPTS``; D-026 alerts on the
+    *first* failure only, so a send that later exhausts its retries sat ``dead`` silently. This
+    closes that gap with one Slack line per dead-lettered send. The text carries the triggering
+    event's SID (``raw_events.idempotency_key``), never the caller number or message body
+    (rule 5, D-026). ``notify_support`` never raises and is a no-op when no webhook is set.
+    """
+    trigger_sid = session.execute(
+        select(RawEvent.idempotency_key).where(RawEvent.id == message.raw_event_id)
+    ).scalar_one_or_none()
+    notify_support(
+        f"auto-SMS send dead-lettered for {trigger_sid or f'outbound #{message.id}'}"
+        " — needs manual retry"
     )

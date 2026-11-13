@@ -154,6 +154,30 @@ def test_retry_dead_letters_after_max_attempts(session: Session) -> None:
     assert message.attempts == 3
 
 
+def test_retry_invokes_on_dead_letter_per_dead_message(session: Session) -> None:
+    message = _failed(session, attempts=2)
+    sender = _Sender(error=RuntimeError("twilio is down"))
+    dead: list[OutboundMessage] = []
+
+    assert retry_failed_sends(session, sender, on_dead_letter=dead.append) == 0
+    session.commit()
+
+    assert dead == [message]
+    assert message.status == "dead"
+
+
+def test_retry_does_not_invoke_on_dead_letter_on_success(session: Session) -> None:
+    message = _failed(session)  # attempts=1, the retry succeeds
+    sender = _Sender()
+    dead: list[OutboundMessage] = []
+
+    assert retry_failed_sends(session, sender, on_dead_letter=dead.append) == 1
+    session.commit()
+
+    assert dead == []
+    assert message.status == "sent"
+
+
 def test_retry_skips_messages_already_at_the_bound(session: Session) -> None:
     message = _failed(session, attempts=3)  # already exhausted
     sender = _Sender()
