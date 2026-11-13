@@ -1,7 +1,7 @@
 ---
 title: Request Flows
 status: draft
-version: 0.5
+version: 0.7
 last_updated: 2026-11-13
 verified_against: 1a432df
 ---
@@ -217,6 +217,12 @@ in `agent_ant_missed_call.processor`), and writes a `job_records` row (status `c
 `llm_output_audits` row. A failed extraction writes the audit row only. With no provider
 configured the task is skipped entirely, so a reply is still stored and answered.
 
+Every attempt records its outcome on the reply (D-024): `extraction_attempts` is bumped and
+`extraction_status` becomes `done` (a job was captured) or `failed` (invalid output, or the
+provider raised). `retry_failed_extractions` (`just retry-extractions`) re-runs any reply that is
+not `done` and under the attempt bound, dead-lettering (`dead`) the ones that still fail — so a
+reply whose extraction failed or never ran is a retryable row, not a silent loss.
+
 **STOP / HELP are handled before extraction** (#72, D-019). The route checks the normalised
 `Body` against the opt-out and help keywords; a match never reaches the LLM. STOP records the
 caller in `opt_outs` and confirms with a fixed one-line text; HELP answers with the fixed
@@ -241,7 +247,10 @@ can ring back.
 | Session factory | `extraction.py::get_session_factory` |
 | Background task | `extraction.py::extract_reply` |
 | Extraction + persistence | `agent_ant_missed_call.processor::process_reply` |
+| Retry loop | `extraction.py::retry_failed_extractions` (schedule via `just retry-extractions`) |
+| Retry queries | `db/extraction.py::candidate_replies`, `::list_failed_extractions` |
 | Job insert | `db/jobs.py::persist_job_record` (idempotent on `idempotency_key`) |
+| Migration | `migrations/versions/…0008…` (`extraction_attempts`, `extraction_status`) |
 
 ### Twilio field → column
 
@@ -252,6 +261,7 @@ can ring back.
 | `Body`, `To`, `NumMedia`, … | untouched | `raw_events.payload` |
 | — | literal | `raw_events.source = 'sms_reply'` |
 | — | lookup result | `raw_events.related_event_id` |
+| — | retry bookkeeping | `raw_events.extraction_attempts`, `raw_events.extraction_status` |
 
 `Body` is not its own column: Twilio's field set changes per message, so JSONB absorbs that.
 Extraction reads it as `row.payload["Body"]` (or `payload->>'Body'` in SQL).
@@ -287,7 +297,8 @@ sequenceDiagram
   number) with no SID; a successful one gets the SID and `status='sent'`.
 - The status callback updates by SID, idempotently: a duplicate delivery of the same callback
   just sets the same status again, and an unknown SID is ignored.
-- `to` and `body` are personal data, retained 30 days (D-021).
+- `to` and `body` are personal data: retained 30 days, then redacted by `just purge` (D-021,
+  D-025). The SID, status, error code and timestamps stay for aggregate metrics.
 
 ### Code map
 
@@ -298,8 +309,10 @@ sequenceDiagram
 | Send outcome | `db/outbound_sms.py::mark_sent`, `::mark_failed` |
 | Callback update | `db/outbound_sms.py::apply_status_callback` |
 | Reply → text link | `db/outbound_sms.py::find_outbound_for_reply` |
+| Retry / dead-letter | `db/outbound_sms.py::retry_failed_sends` (via `just retry-sms`) |
+| Retention purge | `db/outbound_sms.py::purge_personal_data` (via `just purge`) |
 | Model | `models.py::OutboundMessage` (`outbound_messages`) |
-| Migration | `migrations/versions/…0006…` |
+| Migration | `migrations/versions/…0006…`, `…0007…` (`attempts`) |
 
 ## Human approval dashboard
 
@@ -307,7 +320,9 @@ The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so
 is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
 D-005). It has no JSON API and no auth yet — one page, four routes. It also renders the four
 business metrics (capture rate, reply rate, jobs booked, edit rate — D-022) at the top, computed
-by `agent_ant_core.metrics.compute_metrics`.
+by `agent_ant_core.metrics.compute_metrics`, and a failure panel listing failed/dead SMS sends
+(`db/outbound_sms.list_failed_messages`, D-023) plus failed/dead extractions
+(`db/extraction.list_failed_extractions`, D-024).
 
 ```mermaid
 sequenceDiagram
@@ -395,7 +410,7 @@ flowchart TD
     CFG -->|yes| API[Twilio Messages API, 10s timeout]
     API -->|ok| SENT[SMS sent]
     API -->|error or timeout| FAIL[exception logged and swallowed]
-    FAIL --> NONE[caller gets nothing, no retry until #34]
+    FAIL --> NONE[recorded failed; retried by just retry-sms, then dead-lettered (D-023)]
 ```
 
 | Failure | Status | Stored | SMS | Twilio retries? |
@@ -419,8 +434,8 @@ What the table looks like after one missed call and one reply:
 
 ```mermaid
 flowchart LR
-    A["id 1<br/>source voice_call<br/>idempotency_key CA0000...<br/>caller_number +447700900123<br/>related_event_id NULL"]
-    B["id 2<br/>source sms_reply<br/>idempotency_key SM0000...<br/>caller_number +447700900123<br/>related_event_id 1"]
+    A["id 1<br/>source voice_call<br/>idempotency_key CA0000...<br/>caller_number +447700900123<br/>related_event_id NULL<br/>extraction_attempts 0<br/>extraction_status NULL"]
+    B["id 2<br/>source sms_reply<br/>idempotency_key SM0000...<br/>caller_number +447700900123<br/>related_event_id 1<br/>extraction_attempts 1<br/>extraction_status done"]
     A -->|answers| B
 ```
 
@@ -447,12 +462,18 @@ best guess, not an invariant.
 
 - **Reply lookup index.** `(source, caller_number, received_at DESC)` when the table grows.
   Sequential scan is fine at MVP volume.
-- **Outbox.** Turns "at most one, possibly zero" into "at least once" (#34, Week 5).
+- **Scheduling the retry and purge commands.** `just retry-sms`, `just retry-extractions` and
+  `just purge` are commands, not self-scheduling — they need a cron / App Runner scheduled job at
+  deploy (D-023, D-024, D-025). The original "outbox" gap is closed: sends are persisted before
+  the call and retried, so "at most one, possibly zero" is now "retried until sent or
+  dead-lettered".
 
 ## Change history
 
 | Version | Date | Change |
 |---|---|---|
+| 0.7 | 2026-11-13 | Extraction retry + dead-letter (D-024) and the 30-day outbound purge (D-025); `raw_events` gains `extraction_attempts`/`extraction_status` |
+| 0.6 | 2026-11-13 | Dashboard now shows the four metrics (D-022) and a failure panel for failed/dead sends (D-023) |
 | 0.5 | 2026-11-13 | Added outbound SMS persistence and the status callback route (D-021); resolved the delivery-status open question |
 | 0.4 | 2026-11-13 | Added STOP/HELP opt-out to the SMS reply flow (D-019); removed the resolved open question |
 | 0.3 | 2026-11-13 | Added human approval dashboard section (four routes, code map, editable-field table) |

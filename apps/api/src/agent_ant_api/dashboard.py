@@ -15,6 +15,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from agent_ant_core.db import approval
+from agent_ant_core.db.extraction import list_failed_extractions
+from agent_ant_core.db.outbound_sms import list_failed_messages
 from agent_ant_core.db.session import get_sessionmaker
 from agent_ant_core.metrics import compute_metrics
 
@@ -34,8 +36,17 @@ def get_session() -> Iterator[Session]:
 def dashboard(request: Request, session: Annotated[Session, Depends(get_session)]) -> Response:
     jobs = approval.list_captured_jobs(session)
     metrics = compute_metrics(session)
+    failures = list_failed_messages(session)
+    failed_extractions = list_failed_extractions(session)
     return _TEMPLATES.TemplateResponse(
-        request, "dashboard.html", {"jobs": jobs, "metrics": metrics}
+        request,
+        "dashboard.html",
+        {
+            "jobs": jobs,
+            "metrics": metrics,
+            "failures": failures,
+            "failed_extractions": failed_extractions,
+        },
     )
 
 

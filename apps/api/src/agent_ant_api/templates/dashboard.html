@@ -17,6 +17,32 @@
     </ul>
   </section>
 
+  {% if failures %}
+    <section id="failures" style="border-bottom: 1px solid #c33; margin-bottom: 1.5em">
+      <h2>Failed sends ({{ failures|length }})</h2>
+      <ul>
+        {% for msg in failures %}
+          <li>
+            <strong>{{ msg.to }}</strong> — {{ msg.status }}{% if msg.error_code %} ({{ msg.error_code }}){% endif %}, attempt {{ msg.attempts }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if failed_extractions %}
+    <section id="failed-extractions" style="border-bottom: 1px solid #c33; margin-bottom: 1.5em">
+      <h2>Failed extractions ({{ failed_extractions|length }})</h2>
+      <ul>
+        {% for reply in failed_extractions %}
+          <li>
+            reply {{ reply.idempotency_key }} — {{ reply.extraction_status }}, attempt {{ reply.extraction_attempts }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
   {% if not jobs %}
     <p>Nothing waiting.</p>
   {% endif %}
