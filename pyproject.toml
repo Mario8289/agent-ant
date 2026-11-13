@@ -40,7 +40,7 @@ known-first-party = ["agent_ant_core", "agent_ant_api", "agent_ant_missed_call"]
 quote-style = "double"
 
 [tool.pyright]
-include = ["packages", "agents", "apps"]
+include = ["packages", "agents", "apps", "evals"]
 exclude = ["**/node_modules", "**/.venv", "evals/reports", "migrations/versions"]
 typeCheckingMode = "basic"
 pythonVersion = "3.12"
