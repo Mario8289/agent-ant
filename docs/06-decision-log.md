@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.11
+version: 0.12
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -58,6 +58,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-015 | LLM inference: `eu.*` cross-region acceptable, `global.*` rejected | accepted | 2026-11-10 |
 | D-016 | Extraction model: Claude Sonnet 4.6 for now (newer models account-gated) | accepted | 2026-11-10 |
 | D-017 | H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a) | accepted | 2026-11-13 |
+| D-018 | LLM provider locked: AWS Bedrock, `eu.anthropic.claude-sonnet-4-6` (R4) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -378,6 +379,34 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — scoring constants and the dataset path, but changing the pass line after
   the gated run invalidates that run.
 
+### D-018 — LLM provider locked: AWS Bedrock, `eu.anthropic.claude-sonnet-4-6` (R4)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** R4 (docs/05) is the risk that free LLM tiers train on customer data. AGENTS.md
+  rule 5 requires a paid tier with a UK/EU DPA before live traffic. D-009 (ADR 0002) deferred the
+  choice: stay provider-agnostic during the MVP, lock one DPA-backed provider before live traffic.
+  The provider comparison lived in ADR 0002; D-015 and D-016 settled inference geography and model.
+  The remaining step was the lock itself — confirming the DPA and paid tier, and recording them.
+- **Decision:** Lock **AWS Bedrock** as the extraction provider, model
+  `eu.anthropic.claude-sonnet-4-6` (D-016). The founder confirms the AWS DPA and UK transfer
+  addendum are in place against the billed member account `817210752440`, which is pay-as-you-go
+  (not a free tier). Bedrock carries AWS's contractual no-training commitment — inputs and outputs
+  are not used to train the models — so R4's exposure is closed. The synthetic-data-only rule is
+  unchanged: it runs until the live gate, not until this decision.
+- **Consequences:**
+  - R4 moves from "open — deferred to #29" to mitigated (docs/05). Re-confirm the DPA copy is
+    kept and the account remains paid before the first live message; that re-check rides with the
+    deployment gate (#29, "paid tier + DPA in place").
+  - No code change. The Bedrock adapter, `extract_v3` prompt, and the H8a gate already run on
+    this exact model, so the lock records what the repo already does rather than changing it.
+  - The provider seam (`build_llm`) stays. A future model or provider switch is a config change
+    plus a golden-set re-run against the new model (ADR 0002), not a schema change.
+- **Source:** Founder confirmation, 2026-11-13; ADR 0002 (D-009); D-015, D-016;
+  [Amazon Bedrock data protection](https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html)
+  (no training on inputs/outputs).
+- **Reversible?:** cheap — the seam keeps providers swappable; re-locking another provider means
+  re-running the golden set against it.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -390,9 +419,11 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 - Which beachhead segment (carpenters nationally or one region)? See issue #15. Deferred by D-010;
   working assumption is tradespeople in general until then.
-- Which provider wins the Week 4 lock-in? Decide on the golden set and the DPA, at gate #29.
 
 ## Change history
+
+- **0.12 (2026-11-13)** — D-018 accepted: Bedrock locked as the DPA-backed provider
+  (`eu.anthropic.claude-sonnet-4-6`), closing R4's "free tier" exposure.
 
 - **0.11 (2026-11-13)** — D-014 accepted (decided 2026-11-09): the HITL dashboard lives
   in the API, server-rendered. Landed after #28's branch missed `main`.

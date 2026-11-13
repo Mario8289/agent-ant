@@ -1,8 +1,8 @@
 ---
 title: Architecture & Schema
 status: draft
-version: 0.4
-last_updated: 2026-11-05
+version: 0.5
+last_updated: 2026-11-13
 sources:
   - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
   - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
@@ -139,7 +139,7 @@ model is in place before the flow grows.
 | **R1** | Carrier will not forward unanswered calls to Twilio with caller ID preserved | **Kills the wedge** | Test on Dad's real plan **before** building (gate G0b) | ⚠️ untested |
 | R2 | Callers ignore an SMS from an unknown number | H6 fails | Test early; consider sender identification in the template | open |
 | R3 | Extraction accuracy too low to be useful | Rework or stop | Golden set + threshold in Week 3 | open |
-| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only until Week 4; lock one DPA-backed provider (Bedrock preferred) before live traffic (D-009) | open — deferred to #29 |
+| R4 | Free LLM tiers train on customer data | Data-protection breach | Synthetic data only until Week 4; lock one DPA-backed provider (Bedrock preferred) before live traffic (D-009) | mitigated — Bedrock locked (D-018); re-confirm DPA + paid tier at the live gate (#29) |
 | R5 | Twilio signature verification skipped under time pressure | Spoofed jobs | Build it in Week 1, not later | open |
 | R6 | Silent LLM drift after prompt/model changes | Degrading quality | Audit table + edit-rate metric | open |
 
@@ -174,6 +174,7 @@ model is in place before the flow grows.
 
 ## Change history
 
+- **0.5 (2026-11-13)** — R4 marked mitigated: Bedrock locked as the DPA-backed provider (D-018).
 - **0.4 (2026-11-05)** — LangGraph accepted (D-008) and orchestration section rewritten; G0c
   item 5 active again; R4 reframed as deferred to the Week 4 DPA lock (D-009); open questions
   resolved.
