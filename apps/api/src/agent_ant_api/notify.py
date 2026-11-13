@@ -13,6 +13,7 @@ the post itself swallows all errors: alerting must never take down the thing it 
 
 import json
 import logging
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 
@@ -41,6 +42,12 @@ def post_to_slack(webhook_url: str, text: str, *, timeout: int = SLACK_TIMEOUT_S
     )
     try:
         urllib.request.urlopen(request, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        # Slack answers a bad webhook with an HTTP status plus a JSON body ({"error": ...}) that
+        # names the real problem. Surface both; allowing this in a log is fine because the body
+        # carries no secret and the URL is never echoed.
+        reason = exc.read().decode("utf-8", errors="replace")
+        logger.warning("slack webhook rejected the alert: HTTP %s %s", exc.code, reason)
     except Exception:
         # Alerting is best-effort by design: a Slack outage must not break the send/extraction
         # path. Log at warning so a misconfigured webhook is still diagnosable.
