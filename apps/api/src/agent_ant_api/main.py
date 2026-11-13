@@ -3,10 +3,13 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from agent_ant_api.dashboard import router as dashboard_router
 from agent_ant_api.webhooks import router as webhooks_router
 from agent_ant_core.config import get_settings
+from agent_ant_core.db.session import get_sessionmaker
 
 
 def create_app() -> FastAPI:
@@ -35,6 +38,20 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
+
+    @app.get("/ready")
+    def ready() -> JSONResponse:
+        """Readiness probe: the process is up *and* the database answers a SELECT 1.
+
+        App Runner points its health check here, so an instance is only "healthy" while it can
+        actually serve traffic. A broken database returns 503 rather than crashing the probe.
+        """
+        try:
+            with get_sessionmaker()() as session:
+                session.execute(text("SELECT 1"))
+        except Exception:
+            return JSONResponse(status_code=503, content={"status": "unavailable"})
+        return JSONResponse(status_code=200, content={"status": "ready"})
 
     return app
 
