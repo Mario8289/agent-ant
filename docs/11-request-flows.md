@@ -1,7 +1,7 @@
 ---
 title: Request Flows
 status: draft
-version: 0.7
+version: 0.8
 last_updated: 2026-11-13
 verified_against: 1a432df
 ---
@@ -299,6 +299,10 @@ sequenceDiagram
   just sets the same status again, and an unknown SID is ignored.
 - `to` and `body` are personal data: retained 30 days, then redacted by `just purge` (D-021,
   D-025). The SID, status, error code and timestamps stay for aggregate metrics.
+- `raw_events.payload` / `raw_events.caller_number` and `llm_output_audits.raw_output` are
+  retained 90 days, then redacted by the same `just purge` (D-027). `job_records` and
+  `human_edits` are the business record and are kept; a caller can be removed on request with
+  `just erase <number>`.
 
 ### Code map
 
@@ -311,6 +315,8 @@ sequenceDiagram
 | Reply → text link | `db/outbound_sms.py::find_outbound_for_reply` |
 | Retry / dead-letter | `db/outbound_sms.py::retry_failed_sends` (via `just retry-sms`) |
 | Retention purge | `db/outbound_sms.py::purge_personal_data` (via `just purge`) |
+| Raw/audit purge | `db/retention.py::redact_raw_events`, `::redact_llm_outputs` (via `just purge`) |
+| Erasure | `db/retention.py::erase_person` (via `just erase <number>`) |
 | Model | `models.py::OutboundMessage` (`outbound_messages`) |
 | Migration | `migrations/versions/…0006…`, `…0007…` (`attempts`) |
 
@@ -464,14 +470,15 @@ best guess, not an invariant.
   Sequential scan is fine at MVP volume.
 - **Scheduling the retry and purge commands.** `just retry-sms`, `just retry-extractions` and
   `just purge` are commands, not self-scheduling — they need a cron / App Runner scheduled job at
-  deploy (D-023, D-024, D-025). The original "outbox" gap is closed: sends are persisted before
-  the call and retried, so "at most one, possibly zero" is now "retried until sent or
+  deploy (D-023, D-024, D-025, D-027). The original "outbox" gap is closed: sends are persisted
+  before the call and retried, so "at most one, possibly zero" is now "retried until sent or
   dead-lettered".
 
 ## Change history
 
 | Version | Date | Change |
 |---|---|---|
+| 0.8 | 2026-11-13 | 90-day retention for `raw_events` + `llm_output_audits` and on-request erasure (`just erase`); D-027 |
 | 0.7 | 2026-11-13 | Extraction retry + dead-letter (D-024) and the 30-day outbound purge (D-025); `raw_events` gains `extraction_attempts`/`extraction_status` |
 | 0.6 | 2026-11-13 | Dashboard now shows the four metrics (D-022) and a failure panel for failed/dead sends (D-023) |
 | 0.5 | 2026-11-13 | Added outbound SMS persistence and the status callback route (D-021); resolved the delivery-status open question |

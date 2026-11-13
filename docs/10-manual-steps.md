@@ -1,7 +1,7 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.22
+version: 0.23
 last_updated: 2026-11-13
 ---
 
@@ -161,8 +161,9 @@ surface, not the app host.
 
 Blocks: nothing silently lost, and personal fields not kept past their line. The recovery and
 retention commands are scripts, not self-scheduling (D-023, D-024, D-025), so until they run on a
-schedule a failed send or extraction sits `failed` forever and outbound `to`/`body` age past 30
-days. The scheduler is committed as a CDK app in `infra/cdk/` (D-028): three EventBridge Scheduler
+schedule a failed send or extraction sits `failed` forever, outbound `to`/`body` age past 30
+days, and `raw_events`/`llm_output_audits` past 90 days. The scheduler is committed as a CDK app in
+`infra/cdk/` (D-028): three EventBridge Scheduler
 schedules, each running a one-off ECS Fargate task on the same image as the API — `retry-sms` and
 `retry-extractions` every ~5 minutes, `purge` daily at 03:00 UTC. The dead-letter alert (D-026) and
 the reply body on the failure panel ride with it.
@@ -202,12 +203,15 @@ Verify end-to-end:
   `retried N failed send(s)…` line. Repeat for `retry-extractions` (log group
   `/aws/ecs/agent-ant-retry-extractions`, line `recovered N job(s)…`).
 - [ ] Run `purge` once and confirm the task exits cleanly (`/aws/ecs/agent-ant-purge`,
-  `redacted N outbound message(s)`, usually `0` this early).
+  `redacted N outbound message(s), M raw event(s), K audit row(s)`, usually all `0` this early).
+  `purge` covers both retention lines: outbound `to`/`body` after 30 days (D-021, D-025) and
+  `raw_events.payload`/`caller_number` + `llm_output_audits.raw_output` after 90 days (D-027).
 - [ ] Confirm the dead-letter alert: force one send past its retry bound, run `retry-sms`, and
   check the `#agent-ant-alerts` Slack message appears carrying the trigger SID, not the number or
   body (D-026, D-028).
 
-Tear down with `just cdk-destroy` (same flags) if the stack must go.
+Tear down with `just cdk-destroy` (same flags) if the stack must go. `just erase <number>` stays a
+manual step for right-to-erasure requests (D-027) — it is run by hand, not scheduled.
 
 ### Wire up Slack support alerting (Week 5, #94)
 
@@ -418,9 +422,11 @@ Still to verify before the first call:
 
 ## Change history
 
-- **0.22 (2026-11-13)** — the Week 5 scheduler step is now a concrete CDK procedure
+- **0.23 (2026-11-13)** — the Week 5 scheduler step is now a concrete CDK procedure
   (`infra/cdk/`, D-028): `cdk bootstrap`, synth/diff/deploy with `-c` flags, and an E2E
   verification checklist (#96).
+- **0.22 (2026-11-13)** — the purge step now covers the 90-day `raw_events`/audit redaction, and
+  `just erase <number>` is recorded for right-to-erasure requests (D-027, #95).
 - **0.21 (2026-11-13)** — added the Slack support-alerting step (D-026): create the incoming
   webhook, set `SLACK_WEBHOOK_URL`, verify with `just test-slack` (#94).
 - **0.20 (2026-11-13)** — added the Week 5 step to schedule the retry and purge commands (#34,
