@@ -1,8 +1,8 @@
 ---
 title: Manual Steps — things only you can do
 status: draft
-version: 0.17
-last_updated: 2026-11-10
+version: 0.18
+last_updated: 2026-11-13
 ---
 
 # 10 — Manual Steps
@@ -42,9 +42,9 @@ Blocks: the missed-call text actually reaching a phone (#20).
 - [ ] Decide whether a caller ringing the Twilio number back should hear more than the fixed
   message (see D-011).
 
-`HELP`/`STOP` handling is deferred: the guideline applies to real end users, and the
-prototype only uses synthetic data and test calls. Tracked in
-[#72](https://github.com/Mario8289/agent-ant/issues/72), needed before the Week 4 gates.
+`HELP`/`STOP` handling is implemented (#72, D-019): STOP opts the caller out and is confirmed
+with a fixed text, HELP answers with the reply-to-here instructions. Both are fixed templates
+(D-004).
 
 ### LLM credentials for Week 2 — Bedrock
 Blocks: the extraction agent (#22, #23). Nothing runs without a provider. Bedrock is the Week 2
@@ -292,6 +292,7 @@ Still to verify before the first call:
 
 ## Change history
 
+- **0.18 (2026-11-13)** — HELP/STOP opt-out implemented (#72, D-019); removed the deferral note.
 - **0.17 (2026-11-10)** — D-016: extraction model is `eu.anthropic.claude-sonnet-4-6` (newer
   Claude models account-gated for `817210752440`); noted the IAM policy name is stale.
 - **0.16 (2026-11-10)** — D-015: `eu.*` cross-region inference is now the accepted route; updated
