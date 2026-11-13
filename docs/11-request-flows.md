@@ -1,7 +1,7 @@
 ---
 title: Request Flows
 status: draft
-version: 0.4
+version: 0.5
 last_updated: 2026-11-13
 verified_against: 1a432df
 ---
@@ -91,6 +91,8 @@ sequenceDiagram
 | Sender factory | `apps/api/src/agent_ant_api/sms.py::get_sms_sender` |
 | Template text | `apps/api/src/agent_ant_api/sms.py::build_missed_call_message` |
 | Background send | `apps/api/src/agent_ant_api/sms.py::send_missed_call_sms` |
+| Outbound persistence | `packages/core/src/agent_ant_core/db/outbound_sms.py::create_outbound_message` → `models.py::OutboundMessage` |
+| Send outcome | `outbound_sms.py::mark_sent`, `::mark_failed` |
 
 ### Twilio field → column
 
@@ -254,6 +256,51 @@ can ring back.
 `Body` is not its own column: Twilio's field set changes per message, so JSONB absorbs that.
 Extraction reads it as `row.payload["Body"]` (or `payload->>'Body'` in SQL).
 
+## Outbound SMS and status callbacks
+
+Every auto-text we send is persisted (D-021), so "did we text this caller, and did it deliver?"
+is answerable from our own database, and the reply-rate denominator (H6) is real rather than
+guessed. The send happens in the same background task as before, but now writes a row around it.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant BT as BackgroundTasks
+    participant A as send_missed_call_sms
+    participant DB as Postgres
+    participant TA as Twilio Messages API
+    participant SC as /webhooks/sms-status
+
+    BT->>A: send_missed_call_sms(sender, name, call_sid, to, make_session)
+    A->>DB: INSERT outbound_messages (status 'sending', no SID), COMMIT
+    A->>TA: messages.create(to, body, status_callback=...)
+    TA-->>A: MessageSid (or raises, e.g. error 21211)
+    A->>DB: UPDATE status 'sent' + SID  |  UPDATE status 'failed' + error_code
+    Note over TA,SC: later, when the message is actually delivered
+    TA->>SC: POST /webhooks/sms-status (MessageSid, MessageStatus=delivered)
+    SC->>DB: UPDATE outbound_messages SET status='delivered' WHERE twilio_message_sid=...
+```
+
+- The row is written and committed **before** the Twilio call, so a crash cannot leave a "text
+  was sent" situation with no record of it.
+- A failed send gets `status='failed'` and the Twilio `error_code` (e.g. `21211` = invalid
+  number) with no SID; a successful one gets the SID and `status='sent'`.
+- The status callback updates by SID, idempotently: a duplicate delivery of the same callback
+  just sets the same status again, and an unknown SID is ignored.
+- `to` and `body` are personal data, retained 30 days (D-021).
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| Route (callback) | `webhooks.py::sms_status` |
+| Insert | `db/outbound_sms.py::create_outbound_message` |
+| Send outcome | `db/outbound_sms.py::mark_sent`, `::mark_failed` |
+| Callback update | `db/outbound_sms.py::apply_status_callback` |
+| Reply → text link | `db/outbound_sms.py::find_outbound_for_reply` |
+| Model | `models.py::OutboundMessage` (`outbound_messages`) |
+| Migration | `migrations/versions/…0006…` |
+
 ## Human approval dashboard
 
 The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so. The dashboard
@@ -396,8 +443,6 @@ best guess, not an invariant.
 
 ## Open questions
 
-- **Delivery status callbacks.** Without them, "text never arrived" and "text ignored" look
-  identical, so H6 (reply rate) cannot separate the two. Needs an issue before Week 4.
 - **Reply lookup index.** `(source, caller_number, received_at DESC)` when the table grows.
   Sequential scan is fine at MVP volume.
 - **Outbox.** Turns "at most one, possibly zero" into "at least once" (#34, Week 5).
@@ -406,6 +451,7 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5 | 2026-11-13 | Added outbound SMS persistence and the status callback route (D-021); resolved the delivery-status open question |
 | 0.4 | 2026-11-13 | Added STOP/HELP opt-out to the SMS reply flow (D-019); removed the resolved open question |
 | 0.3 | 2026-11-13 | Added human approval dashboard section (four routes, code map, editable-field table) |
 | 0.2 | 2026-11-09 | Wired extraction into the SMS reply flow (recorded retroactively) |

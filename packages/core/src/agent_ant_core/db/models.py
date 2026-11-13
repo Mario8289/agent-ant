@@ -166,3 +166,26 @@ class OptOut(Base):
     opted_out_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class OutboundMessage(Base):
+    """One auto-SMS we sent, kept so "did we text this caller?" is answerable locally (#73).
+
+    ``raw_event_id`` points at the inbound event that triggered the send — the missed call for
+    the auto-text, or the STOP/HELP reply for a confirmation/help. ``twilio_message_sid`` is
+    null until Twilio accepts the message (a failed send gets no SID) and unique so a status
+    callback can update the row by SID. ``to`` and ``body`` are personal data in aggregate, so
+    retention is a DPA decision (D-021), not an afterthought.
+    """
+
+    __tablename__ = "outbound_messages"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    twilio_message_sid: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
+    raw_event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_events.id"))
+    to: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, default="sending")
+    error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

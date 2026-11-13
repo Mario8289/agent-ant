@@ -24,6 +24,7 @@ from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.idempotency import persist_raw_event
 from agent_ant_core.db.models import RawEvent
 from agent_ant_core.db.opt_out import is_opted_out, record_opt_out
+from agent_ant_core.db.outbound_sms import apply_status_callback
 from agent_ant_core.db.session import get_sessionmaker
 from agent_ant_core.llm import LLM
 
@@ -53,6 +54,7 @@ def missed_call(
     session: Annotated[Session, Depends(get_session)],
     settings: Annotated[Settings, Depends(get_settings)],
     sms_sender: Annotated[SmsSender | None, Depends(get_sms_sender)],
+    session_factory: Annotated[SessionFactory, Depends(get_session_factory)],
     background: BackgroundTasks,
 ) -> Response:
     """Persist the call, then answer fast.
@@ -80,7 +82,12 @@ def missed_call(
 
     if inserted and not is_opted_out(session, caller):
         background.add_task(
-            send_missed_call_sms, sms_sender, settings.business_name, call_sid, caller
+            send_missed_call_sms,
+            sms_sender,
+            settings.business_name,
+            call_sid,
+            caller,
+            session_factory,
         )
 
     # CallSid only: caller numbers are personal data and stay out of logs.
@@ -139,11 +146,21 @@ def sms_reply(
             record_opt_out(session, caller)
             session.commit()
             background.add_task(
-                send_stop_confirmation, sms_sender, settings.business_name, message_sid, caller
+                send_stop_confirmation,
+                sms_sender,
+                settings.business_name,
+                message_sid,
+                caller,
+                session_factory,
             )
         elif is_help_keyword(body):
             background.add_task(
-                send_help_reply, sms_sender, settings.business_name, message_sid, caller
+                send_help_reply,
+                sms_sender,
+                settings.business_name,
+                message_sid,
+                caller,
+                session_factory,
             )
         else:
             background.add_task(
@@ -155,4 +172,25 @@ def sms_reply(
             )
 
     logger.info("sms reply %s: %s", message_sid, "stored" if inserted else "duplicate ignored")
+    return Response(status_code=200)
+
+
+@router.post("/webhooks/sms-status")
+def sms_status(
+    form: Annotated[dict[str, str], Depends(verified_twilio_form)],
+    session: Annotated[Session, Depends(get_session)],
+) -> Response:
+    """Twilio's delivery-status callback: update the outbound row by MessageSid (#73).
+
+    Twilio posts here when a message moves to ``delivered``, ``undelivered``, ``failed``, etc.
+    The update is idempotent — a duplicate callback sets the same status again and creates
+    nothing — and an unknown SID (a message sent before this table existed) is ignored.
+    """
+    twilio_sid = form.get("MessageSid")
+    status = form.get("MessageStatus")
+    if not twilio_sid or not status:
+        raise HTTPException(status_code=400, detail="MessageSid and MessageStatus are required")
+
+    apply_status_callback(session, twilio_sid, status, form.get("ErrorCode") or None)
+    session.commit()
     return Response(status_code=200)

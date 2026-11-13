@@ -10,10 +10,12 @@ from collections.abc import Callable, Iterator
 
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
-from sqlalchemy import func, select
+from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
+from twilio.base.exceptions import TwilioRestException
 from twilio.request_validator import RequestValidator
 
+from agent_ant_api.extraction import get_session_factory
 from agent_ant_api.main import create_app
 from agent_ant_api.sms import (
     SmsSender,
@@ -24,11 +26,12 @@ from agent_ant_api.sms import (
 )
 from agent_ant_api.webhooks import get_session
 from agent_ant_core.config import Settings, get_settings
-from agent_ant_core.db.models import OptOut, RawEvent
+from agent_ant_core.db.models import OptOut, OutboundMessage, RawEvent
 
 TOKEN = "test_token"
 PATH = "/webhooks/missed-call"
 FORM = {"CallSid": "CA00000000000000000000000000000001", "From": "+447000000000"}
+SMS_SID = "SM00000000000000000000000000000001"
 
 
 def _no_database() -> Iterator[Session]:
@@ -46,6 +49,7 @@ def _use(session: Session) -> Callable[[], Iterator[Session]]:
 def _client(
     session_dependency: Callable[[], Iterator[Session]] = _no_database,
     sms_sender: SmsSender | None = None,
+    engine: Engine | None = None,
     **settings: object,
 ) -> TestClient:
     values: dict[str, object] = {"twilio_auth_token": SecretStr(TOKEN), **settings}
@@ -53,6 +57,9 @@ def _client(
     app.dependency_overrides[get_settings] = lambda: Settings(_env_file=None, **values)  # type: ignore[arg-type]
     app.dependency_overrides[get_session] = session_dependency
     app.dependency_overrides[get_sms_sender] = lambda: sms_sender
+    if engine is not None:
+        # The background send opens its own session to persist the outbound message (#73).
+        app.dependency_overrides[get_session_factory] = lambda: lambda: Session(engine)
     return TestClient(app)
 
 
@@ -82,8 +89,8 @@ def test_fails_closed_without_an_auth_token() -> None:
     assert client.post(PATH, data=FORM, headers=_sign(_url(client))).status_code == 503
 
 
-def test_valid_request_is_stored_and_answered_with_twiml(session: Session) -> None:
-    client = _client(_use(session))
+def test_valid_request_is_stored_and_answered_with_twiml(session: Session, engine: Engine) -> None:
+    client = _client(_use(session), engine=engine)
     response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
 
     assert response.status_code == 200
@@ -97,8 +104,8 @@ def test_valid_request_is_stored_and_answered_with_twiml(session: Session) -> No
     )
 
 
-def test_retry_gets_the_same_200_and_is_stored_once(session: Session) -> None:
-    client = _client(_use(session))
+def test_retry_gets_the_same_200_and_is_stored_once(session: Session, engine: Engine) -> None:
+    client = _client(_use(session), engine=engine)
     headers = _sign(_url(client))
     first = client.post(PATH, data=FORM, headers=headers)
     retry = client.post(PATH, data=FORM, headers=headers)
@@ -107,37 +114,39 @@ def test_retry_gets_the_same_200_and_is_stored_once(session: Session) -> None:
     assert session.execute(select(func.count()).select_from(RawEvent)).scalar_one() == 1
 
 
-def test_signature_is_checked_against_the_public_base_url(session: Session) -> None:
+def test_signature_is_checked_against_the_public_base_url(session: Session, engine: Engine) -> None:
     # Behind a tunnel Twilio signs the public URL, not the one the app sees.
     public = "https://example.ngrok.app"
-    client = _client(_use(session), public_base_url=public)
+    client = _client(_use(session), engine=engine, public_base_url=public)
 
     assert client.post(PATH, data=FORM, headers=_sign(public + PATH)).status_code == 200
 
 
 class FakeSms:
-    def __init__(self, error: Exception | None = None) -> None:
+    def __init__(self, error: Exception | None = None, sid: str = SMS_SID) -> None:
         self.sent: list[tuple[str, str]] = []
         self.error = error
+        self.sid = sid
 
-    def __call__(self, to: str, body: str) -> None:
+    def __call__(self, to: str, body: str) -> str:
         if self.error:
             raise self.error
         self.sent.append((to, body))
+        return self.sid
 
 
-def test_first_delivery_sends_one_fixed_template_text(session: Session) -> None:
+def test_first_delivery_sends_one_fixed_template_text(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    client = _client(_use(session), sms, engine=engine, business_name="Dave's Joinery")
     client.post(PATH, data=FORM, headers=_sign(_url(client)))
 
     assert sms.sent == [(FORM["From"], build_missed_call_message("Dave's Joinery"))]
     assert "Dave's Joinery" in sms.sent[0][1]
 
 
-def test_retry_does_not_send_a_second_text(session: Session) -> None:
+def test_retry_does_not_send_a_second_text(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms)
+    client = _client(_use(session), sms, engine=engine)
     headers = _sign(_url(client))
     client.post(PATH, data=FORM, headers=headers)
     client.post(PATH, data=FORM, headers=headers)
@@ -145,33 +154,92 @@ def test_retry_does_not_send_a_second_text(session: Session) -> None:
     assert len(sms.sent) == 1
 
 
-def test_send_failure_does_not_fail_the_webhook(session: Session) -> None:
-    client = _client(_use(session), FakeSms(error=TimeoutError("twilio is down")))
+def test_send_failure_does_not_fail_the_webhook(session: Session, engine: Engine) -> None:
+    client = _client(_use(session), FakeSms(error=TimeoutError("twilio is down")), engine=engine)
     response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
 
     assert response.status_code == 200
     assert session.execute(select(func.count()).select_from(RawEvent)).scalar_one() == 1
 
 
-def test_unconfigured_twilio_still_stores_and_answers(session: Session) -> None:
-    client = _client(_use(session), sms_sender=None)
+def test_unconfigured_twilio_still_stores_and_answers(session: Session, engine: Engine) -> None:
+    client = _client(_use(session), sms_sender=None, engine=engine)
     response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
 
     assert response.status_code == 200
+
+
+# --- Outbound persistence (#73) -----------------------------------------------------------
+
+
+def test_successful_send_persists_the_outbound_message(session: Session, engine: Engine) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, engine=engine)
+    client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    message = session.execute(select(OutboundMessage)).scalar_one()
+    assert message.twilio_message_sid == SMS_SID
+    assert message.status == "sent"
+    assert message.to == FORM["From"]
+
+
+def test_twilio_error_is_recorded_as_failed(session: Session, engine: Engine) -> None:
+    error = TwilioRestException(status=400, uri="", msg="invalid number", code=21211)
+    client = _client(_use(session), FakeSms(error=error), engine=engine)
+    response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    assert response.status_code == 200  # the webhook already answered; the failure is recorded
+    message = session.execute(select(OutboundMessage)).scalar_one()
+    assert message.status == "failed"
+    assert message.error_code == "21211"
+    assert message.twilio_message_sid is None
+
+
+STATUS_PATH = "/webhooks/sms-status"
+
+
+def _post_status(client: TestClient, sid: str, status: str) -> None:
+    form = {"MessageSid": sid, "MessageStatus": status}
+    url = str(client.base_url).rstrip("/") + STATUS_PATH
+    assert client.post(STATUS_PATH, data=form, headers=_sign(url, form)).status_code == 200
+
+
+def test_status_callback_updates_the_outbound_row(session: Session, engine: Engine) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, engine=engine)
+    client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    _post_status(client, SMS_SID, "delivered")
+
+    message = session.execute(select(OutboundMessage)).scalar_one()
+    assert message.status == "delivered"
+
+
+def test_duplicate_status_callback_does_not_create_a_row(session: Session, engine: Engine) -> None:
+    sms = FakeSms()
+    client = _client(_use(session), sms, engine=engine)
+    client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    _post_status(client, SMS_SID, "delivered")
+    _post_status(client, SMS_SID, "delivered")  # at-least-once delivery
+
+    assert session.execute(select(func.count()).select_from(OutboundMessage)).scalar_one() == 1
 
 
 # --- SMS reply ----------------------------------------------------------------------------
 
 REPLY_PATH = "/webhooks/sms-reply"
 REPLY = {
-    "MessageSid": "SM00000000000000000000000000000001",
+    "MessageSid": "SM00000000000000000000000000000002",
     "From": FORM["From"],
     "Body": "Leaky tap",
 }
 
 
-def test_reply_is_stored_once_and_linked_to_the_missed_call(session: Session) -> None:
-    client = _client(_use(session))
+def test_reply_is_stored_once_and_linked_to_the_missed_call(
+    session: Session, engine: Engine
+) -> None:
+    client = _client(_use(session), engine=engine)
     client.post(PATH, data=FORM, headers=_sign(_url(client)))
     url = str(client.base_url).rstrip("/") + REPLY_PATH
     headers = _sign(url, REPLY)
@@ -203,45 +271,45 @@ def _post_reply(client: TestClient, body: str) -> None:
     assert client.post(REPLY_PATH, data=form, headers=_sign(url, form)).status_code == 200
 
 
-def test_stop_records_opt_out_and_confirms(session: Session) -> None:
+def test_stop_records_opt_out_and_confirms(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    client = _client(_use(session), sms, engine=engine, business_name="Dave's Joinery")
     _post_reply(client, "STOP")
 
     assert session.get(OptOut, FORM["From"]) is not None
     assert sms.sent == [(FORM["From"], build_stop_confirmation("Dave's Joinery"))]
 
 
-def test_help_replies_without_opting_out(session: Session) -> None:
+def test_help_replies_without_opting_out(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms, business_name="Dave's Joinery")
+    client = _client(_use(session), sms, engine=engine, business_name="Dave's Joinery")
     _post_reply(client, "HELP")
 
     assert session.get(OptOut, FORM["From"]) is None
     assert sms.sent == [(FORM["From"], build_help_reply("Dave's Joinery"))]
 
 
-def test_stop_is_not_answered_by_a_second_auto_text(session: Session) -> None:
+def test_stop_is_not_answered_by_a_second_auto_text(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms)
+    client = _client(_use(session), sms, engine=engine)
     _post_reply(client, "STOP")
     _post_reply(client, "STOP")  # duplicate delivery must not confirm twice
 
     assert len(sms.sent) == 1
 
 
-def test_stop_keyword_ignores_case_and_whitespace(session: Session) -> None:
+def test_stop_keyword_ignores_case_and_whitespace(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms)
+    client = _client(_use(session), sms, engine=engine)
     _post_reply(client, "  stop ")
 
     assert session.get(OptOut, FORM["From"]) is not None
     assert len(sms.sent) == 1
 
 
-def test_opted_out_caller_is_not_texted_on_a_missed_call(session: Session) -> None:
+def test_opted_out_caller_is_not_texted_on_a_missed_call(session: Session, engine: Engine) -> None:
     sms = FakeSms()
-    client = _client(_use(session), sms)
+    client = _client(_use(session), sms, engine=engine)
     _post_reply(client, "STOP")
 
     response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
