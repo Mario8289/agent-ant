@@ -61,7 +61,7 @@ def test_valid_reply_becomes_a_captured_job_and_audit_row(session: Session) -> N
     assert audit.raw_event_id == event_id
     assert audit.validated is True
     assert audit.model == "test-model"
-    assert audit.prompt_version == "extract_v1"
+    assert audit.prompt_version == "extract_v3"
 
 
 def test_invalid_reply_writes_an_audit_row_but_no_job(session: Session) -> None:

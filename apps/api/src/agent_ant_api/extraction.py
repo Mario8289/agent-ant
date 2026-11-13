@@ -2,7 +2,7 @@
 
 Runs after the webhook has already stored the reply and answered Twilio, so a slow or failing
 model call can never delay or fail the webhook. The provider seam (``get_llm``) returns None
-until a Bedrock-backed adapter lands (D-009, ``docs/10``), so extraction is skipped rather than
+when ``LLM_PROVIDER`` / ``LLM_MODEL`` are unset (D-009), so extraction is skipped rather than
 attempted against a missing client.
 
 The background task opens its own session through an injected factory: the webhook's request
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from agent_ant_core.config import Settings, get_settings
 from agent_ant_core.db.models import RawEvent
 from agent_ant_core.db.session import get_sessionmaker
-from agent_ant_core.llm import LLM
+from agent_ant_core.llm import LLM, build_llm
 from agent_ant_missed_call.processor import process_reply
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,8 @@ SessionFactory = Callable[[], Session]
 
 
 def get_llm(settings: Annotated[Settings, Depends(get_settings)]) -> LLM | None:
-    """Return the provider for extraction, or None when none is configured.
-
-    The Bedrock adapter that satisfies ``LLM`` is written once the credentials checklist in
-    ``docs/10`` is done (D-009). Until then there is no provider to hand out, and extraction
-    is skipped.
-    """
-    return None  # TODO(#22 real call): return a Bedrock-backed LLM when llm_provider is set.
+    """Return the provider for extraction, or None when none is configured (D-009)."""
+    return build_llm(settings)
 
 
 def get_session_factory() -> SessionFactory:

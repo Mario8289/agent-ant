@@ -7,7 +7,7 @@ changes can be attributed.
 
 from importlib.resources import files
 
-EXTRACT_PROMPT_VERSION = "extract_v1"
+EXTRACT_PROMPT_VERSION = "extract_v3"
 REPAIR_PROMPT_VERSION = "repair_v1"
 
 _PACKAGE = "agent_ant_missed_call"

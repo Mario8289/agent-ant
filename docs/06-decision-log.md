@@ -1,8 +1,8 @@
 ---
 title: Decision Log
 status: draft
-version: 0.7
-last_updated: 2026-11-09
+version: 0.10
+last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
   - Ries — The Lean Startup (2011) — validated learning — verified
@@ -54,6 +54,9 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-011 | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
 | D-012 | Audit trail: two tables (`llm_output_audits` + `human_edits`), `job_id` deferred | accepted | 2026-11-09 |
 | D-013 | `job_records` table + background extraction; the approval interrupt stays Week 4 | accepted | 2026-11-09 |
+| D-015 | LLM inference: `eu.*` cross-region acceptable, `global.*` rejected | accepted | 2026-11-10 |
+| D-016 | Extraction model: Claude Sonnet 4.6 for now (newer models account-gated) | accepted | 2026-11-10 |
+| D-017 | H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -169,6 +172,8 @@ here as a single entry. Decisions that need more space get a full ADR in
   provider and re-run the golden set before Dad goes live in Week 4 (#29).
 - **Chosen 2026-11-07:** Bedrock, `eu-west-2`, single-region inference, for Week 2 development.
   The model is picked when #22 starts, after checking it is offered in London.
+  > **Superseded in part by D-015 (2026-11-10):** the `eu-west-2` single-region constraint is
+  > relaxed to EU geography (`eu.*` profiles). The swappable-provider and DPA-lock parts stand.
 - **Consequences:** R4 stays open until Week 4 — the risk being carried. Mitigations are the
   synthetic-data rule and the explicit gate. An adapter seam keeps a switch to a config change.
   Real customer messages arriving early must not be sent to the LLM.
@@ -257,6 +262,105 @@ here as a single entry. Decisions that need more space get a full ADR in
   [09-execution-plan.md](./09-execution-plan.md) Week 2 "done when"; D-008, D-012
 - **Reversible?:** cheap — tables are new; the background-task wiring is a small seam.
 
+### D-015 — LLM inference: `eu.*` cross-region acceptable, `global.*` rejected
+- **Date:** 2026-11-10
+- **Status:** accepted
+- **Context:** London (`eu-west-2`) offers only a couple of Claude models in-region, so the
+  founder wanted a wider choice. Spike 06 found no regulatory blocker: the EU renewed the UK's
+  adequacy decisions on 19 Dec 2025 (valid to 2031), the UK treats the EEA as adequate, and
+  Bedrock's `eu.*` cross-region profile stays inside EU geography.
+- **Decision:** Relax D-009's single-region constraint. The `eu.*` cross-region inference profile
+  is accepted, because prompts and outputs stay within EU geography. `global.*` stays rejected —
+  it can route to the US (or any region) with no residency guarantee. `AWS_REGION` stays
+  `eu-west-2`; `LLM_MODEL` may be an `eu.*` profile id.
+- **Consequences:** More models and burst capacity than in-region London. A request may be served
+  by any EU region in the profile, so data is not pinned to the UK — lawful under UK adequacy,
+  but not "UK-only". The region SCP and IAM policy must keep allowing the EU regions the profile
+  routes to and keep blocking `global.*` (docs/10, spike 06). Revert to a single-region model id
+  if a customer later needs UK-only processing.
+- **Source:** spikes/06-uk-eea-data-residency.md; EU adequacy renewal (19 Dec 2025)
+- **Reversible?:** cheap — a config change (`LLM_MODEL` id).
+
+### D-016 — Extraction model: Claude Sonnet 4.6 for now (newer models account-gated)
+- **Date:** 2026-11-10
+- **Status:** accepted
+- **Context:** Enabling Bedrock, the founder found only `eu.anthropic.claude-sonnet-4-6` and
+  `eu.anthropic.claude-haiku-4-5` actually callable in `eu-west-2`. Sonnet 5, Sonnet 5.5 and
+  Opus 5.5 all return "not available for this account" — an account-level entitlement, not a
+  routing limit: the `global.*` profile returns the same error, confirming it is the account,
+  not the geography.
+- **Decision:** Use `eu.anthropic.claude-sonnet-4-6` for extraction now. It stays in the EU
+  (D-015) and is strong at structured extraction.
+- **Consequences:** The IAM inline policy `BedrockInvokeEuSonnet55` is scoped to this model's
+  profile; its name is now stale but harmless. To request newer models, ask AWS Sales/Support for
+  account `817210752440` (`eu-west-2`, model `eu.anthropic.claude-sonnet-5-5`) — limits usually
+  relax as a new account builds billing history. When access opens, switching is a one-line
+  `.env` change plus the IAM policy ARNs (docs/10).
+- **Source:** Bedrock model-access test, 2026-11-10; [10-manual-steps.md](./10-manual-steps.md)
+- **Reversible?:** cheap — a config change (`LLM_MODEL`) plus an IAM resource ARN.
+
+### D-017 — H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a)
+- **Date:** 2026-11-13
+- **Status:** accepted (2026-11-13). The founder reviewed and approved the `golden_v2` labels;
+  the pass line is frozen from this date, before the gated run.
+- **Context:** Hypothesis-table rule 1 says to freeze the pass line before the test starts. That
+  did not happen for H8: the line was only ever "proposed" (docs/01, `scoring.py`), although
+  `evals/README.md` and the `scoring.py` docstring said "frozen". The first scored run therefore
+  happened without a freeze. Results on `golden_v1` (20 messages), with counts:
+
+  | Prompt | `job_type` metric | `job_type` | `urgency` |
+  |---|---|---|---|
+  | `extract_v1` | exact match | 7/20 (0.35) | 16/20 (0.80) |
+  | `extract_v2` | exact match | 12/20 (0.60); an earlier run scored 11/20 | 20/20 (1.00) |
+  | `extract_v2` outputs, rescored | containment | 17/20 (0.85) | 20/20 (1.00) |
+  | `extract_v3` | containment | 18/20 (0.90) | 20/20 (1.00) |
+
+  Three problems with reading those numbers as evidence:
+  1. **Tuned on the test set.** `extract_v2` and `extract_v3` were written after reading the
+     misses on `golden_v1`, then scored on `golden_v1`. The 1.00 urgency score is optimistic.
+  2. **The metric changed after the results.** Exact match on a free-text field measured wording,
+     not usefulness: "decking installation" failed the label "decking". The remaining
+     `job_type` misses under exact match were wording differences, with one real loss ("bespoke
+     wardrobe" became "wardrobe installation", which dropped the word that matters).
+  3. **Noise.** One message is 0.05 at 20 messages, and the same prompt scored 11/20 and 12/20.
+- **Decision:**
+  - `job_type` is scored by **containment**: every word of the label (lowercased, trailing "s"
+    removed) must appear in the answer, and the answer may be at most **one word longer** than the
+    label. Every other field stays exact match. `job_type` stays free text; no category list.
+  - The gate is **H8a**, run on a new held-out set, `golden_v2` (40 messages, drafted from the
+    labelling convention in `evals/README.md` without looking at model output). The gate is the
+    **mean of three runs**, with counts reported. Pass line: `job_type` ≥ 0.80 and
+    `urgency` ≥ 0.90, unchanged from H8. Prompt `extract_v3`, model
+    `eu.anthropic.claude-sonnet-4-6` (D-016).
+  - `golden_v1` stays as a regression guard. It is not gate evidence.
+  - H8 keeps its recorded first-run result and is marked superseded (docs/01, rule 4).
+  - The gate prints counts only; per-message answers go to `evals/reports/golden_v2.json` and
+    are read after the gate is recorded. If the gate fails and the prompt is changed, `golden_v2`
+    is spent as a held-out set and a third set is needed before claiming a pass.
+- **Result (2026-11-13, one gated run: three passes over `golden_v2`, prompt `extract_v3`, model
+  `eu.anthropic.claude-sonnet-4-6`):** PASS.
+
+  | Run | `job_type` | `urgency` |
+  |---|---|---|
+  | 1 | 36/40 | 40/40 |
+  | 2 | 35/40 | 40/40 |
+  | 3 | 35/40 | 40/40 |
+  | Mean | 0.883 (line ≥ 0.80) | 1.000 (line ≥ 0.90) |
+
+  Other fields, mean: `name` 0.975, `location` 1.000, `preferred_date` 0.975. The set and prompt
+  were not changed between freeze and run. Per-message detail:
+  `evals/reports/golden_v2.json` (gitignored).
+- **Consequences:** The pass tells us the extractor is not obviously broken on messages it was
+  not tuned on. It does not tell us it is useful: 40 synthetic messages is a smoke test. The real
+  H8 evidence is the Week 4 edit rate on live replies (#30, #35); until then the golden sets guard
+  against regression only. One label in `golden_v1` ("kitchen worktop") breaks the "no rooms" rule;
+  it stays as a known miss rather than being relabelled to fit the model. Rooms are dropped from
+  `job_type` and are not stored in any field (a separate `room` field would be a schema change).
+- **Source:** First scored runs, 2026-11-09 to 2026-11-13 (`evals/reports/`); hypothesis table
+  rules 1, 2 and 4; Ries, *The Lean Startup* (2011), innovation accounting
+- **Reversible?:** cheap — scoring constants and the dataset path, but changing the pass line after
+  the gated run invalidates that run.
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -273,6 +377,13 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.10 (2026-11-13)** — D-017 accepted: containment metric for `job_type`, held-out
+  `golden_v2`, and the H8a pass line, recorded as a change made after the first scored run.
+  Gated run recorded: PASS (`job_type` 0.883, `urgency` 1.000).
+- **0.9 (2026-11-10)** — D-016 accepted: extraction uses `eu.anthropic.claude-sonnet-4-6` for now;
+  newer Claude models are account-gated for `817210752440`, not blocked by routing.
+- **0.8 (2026-11-10)** — D-015 accepted: `eu.*` cross-region inference is acceptable (stays in EU
+  geography); `global.*` stays rejected. Relaxes D-009's single-region constraint.
 - **0.7 (2026-11-09)** — D-013 accepted: `job_records` table and background extraction wire a
   reply into a captured job + audit row; the approval interrupt stays Week 4.
 - **0.6 (2026-11-09)** — D-012 accepted: audit trail is two tables (`llm_output_audits` +

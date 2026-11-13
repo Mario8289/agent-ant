@@ -1,0 +1,40 @@
+{"message": "Hi, Priya here. Need a bathroom extractor fan fitted, HG1 2AB, thursday if you can", "label": {"name": "Priya", "job_type": "extractor fan fitting", "location": "HG1 2AB", "urgency": "unknown", "preferred_date": "thursday"}}
+{"message": "pipe burst under the sink water going everywhere, call me NOW", "label": {"name": null, "job_type": "pipe repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "can you paint a hallway and landing? no rush, in York", "label": {"name": null, "job_type": "painting", "location": "York", "urgency": "low", "preferred_date": null}}
+{"message": "Mike here, socket in the lounge is loose, YO10 sometime this week", "label": {"name": "Mike", "job_type": "socket repair", "location": "YO10", "urgency": "unknown", "preferred_date": "this week"}}
+{"message": "need a gate latch replaced, free saturday morning", "label": {"name": null, "job_type": "latch replacement", "location": null, "urgency": "unknown", "preferred_date": "saturday morning"}}
+{"message": "quote for plastering a small extension in Ilkley please", "label": {"name": null, "job_type": "plastering", "location": "Ilkley", "urgency": "unknown", "preferred_date": null}}
+{"message": "central heating pump making a loud noise, medium priority", "label": {"name": null, "job_type": "pump repair", "location": null, "urgency": "medium", "preferred_date": null}}
+{"message": "dripping tap in the kitchen, not urgent, Otley LS21", "label": {"name": null, "job_type": "tap repair", "location": "Otley LS21", "urgency": "low", "preferred_date": null}}
+{"message": "Hello is this the joiner? Need 3 internal doors planed, Wakefield", "label": {"name": null, "job_type": "door planing", "location": "Wakefield", "urgency": "unknown", "preferred_date": null}}
+{"message": "ASAP please, front door lock has snapped and I cant lock up", "label": {"name": null, "job_type": "lock repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "looking for someone to put up a shed in Pudsey LS28, any time in march", "label": {"name": null, "job_type": "shed installation", "location": "Pudsey LS28", "urgency": "unknown", "preferred_date": "march"}}
+{"message": "ceiling light in the dining room flickers, could you look at it monday", "label": {"name": null, "job_type": "light repair", "location": null, "urgency": "unknown", "preferred_date": "monday"}}
+{"message": "Mrs Okafor here, need grab rails fitted in the bathroom, low priority", "label": {"name": "Mrs Okafor", "job_type": "grab rail fitting", "location": null, "urgency": "low", "preferred_date": null}}
+{"message": "power has gone off in half the house, please call me back asap", "label": {"name": null, "job_type": "electrical repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "Hi, Tom. Radiator in the spare room not getting hot. Leeds LS8", "label": {"name": "Tom", "job_type": "radiator repair", "location": "Leeds LS8", "urgency": "unknown", "preferred_date": null}}
+{"message": "can you lay a patio about 4m by 3m? Harrogate", "label": {"name": null, "job_type": "patio laying", "location": "Harrogate", "urgency": "unknown", "preferred_date": null}}
+{"message": "tree in my front garden needs cutting back, no hurry", "label": {"name": null, "job_type": "tree cutting", "location": null, "urgency": "low", "preferred_date": null}}
+{"message": "boiler service due, tuesday evening if possible, LS17", "label": {"name": null, "job_type": "boiler service", "location": "LS17", "urgency": "unknown", "preferred_date": "tuesday evening"}}
+{"message": "bathroom sink needs replacing, Sheffield S11, saturday", "label": {"name": null, "job_type": "sink replacement", "location": "Sheffield S11", "urgency": "unknown", "preferred_date": "saturday"}}
+{"message": "wondering if you can repair a leaking gutter at the back, Keighley", "label": {"name": null, "job_type": "gutter repair", "location": "Keighley", "urgency": "unknown", "preferred_date": null}}
+{"message": "window won't close properly, can you take a look? BD1", "label": {"name": null, "job_type": "window repair", "location": "BD1", "urgency": "unknown", "preferred_date": null}}
+{"message": "need new double glazing quoted for 4 windows, Skipton", "label": {"name": null, "job_type": "double glazing", "location": "Skipton", "urgency": "unknown", "preferred_date": null}}
+{"message": "Anna here, can you hang two curtain poles? Leeds LS16, next week", "label": {"name": "Anna", "job_type": "curtain pole hanging", "location": "Leeds LS16", "urgency": "unknown", "preferred_date": "next week"}}
+{"message": "no hot water since this morning, please help asap", "label": {"name": null, "job_type": "hot water repair", "location": null, "urgency": "high", "preferred_date": null}}
+{"message": "can you quote to rewire a 2 bed flat, Manchester M14", "label": {"name": null, "job_type": "rewiring", "location": "Manchester M14", "urgency": "unknown", "preferred_date": null}}
+{"message": "just checking you do roofing? slate slipped off the front, Halifax", "label": {"name": null, "job_type": "roof repair", "location": "Halifax", "urgency": "unknown", "preferred_date": null}}
+{"message": "smoke alarm needs replacing, no rush", "label": {"name": null, "job_type": "smoke alarm replacement", "location": null, "urgency": "low", "preferred_date": null}}
+{"message": "hi, could you fit a cat flap in my back door? Pontefract WF8", "label": {"name": null, "job_type": "cat flap fitting", "location": "Pontefract WF8", "urgency": "unknown", "preferred_date": null}}
+{"message": "Dan here - washing machine leaking from the bottom, need it looked at friday", "label": {"name": "Dan", "job_type": "washing machine repair", "location": null, "urgency": "unknown", "preferred_date": "friday"}}
+{"message": "garage door wont open, medium priority", "label": {"name": null, "job_type": "garage door repair", "location": null, "urgency": "medium", "preferred_date": null}}
+{"message": "who is this? i got a text from this number", "label": {"name": null, "job_type": null, "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "call me back please", "label": {"name": null, "job_type": null, "location": null, "urgency": "unknown", "preferred_date": null}}
+{"message": "need a skip hire quote, Bradford", "label": {"name": null, "job_type": "skip hire", "location": "Bradford", "urgency": "unknown", "preferred_date": null}}
+{"message": "lawn needs cutting and edging, Wetherby, no rush", "label": {"name": null, "job_type": "lawn cutting", "location": "Wetherby", "urgency": "low", "preferred_date": null}}
+{"message": "Sarah here, kitchen extractor hood needs replacing, S6", "label": {"name": "Sarah", "job_type": "extractor hood replacement", "location": "S6", "urgency": "unknown", "preferred_date": null}}
+{"message": "tiler needed for a splashback, 2m wide, Lincoln LN1, sometime after the 20th", "label": {"name": null, "job_type": "splashback tiling", "location": "Lincoln LN1", "urgency": "unknown", "preferred_date": "after the 20th"}}
+{"message": "chimney needs sweeping before winter, YO30", "label": {"name": null, "job_type": "chimney sweeping", "location": "YO30", "urgency": "unknown", "preferred_date": "before winter"}}
+{"message": "hello mate, burglar alarm keeps beeping, can someone have a look, Selby", "label": {"name": null, "job_type": "alarm repair", "location": "Selby", "urgency": "unknown", "preferred_date": null}}
+{"message": "My name is Ben. Need a handrail fitted on the stairs, urgent, Rotherham S60", "label": {"name": "Ben", "job_type": "handrail fitting", "location": "Rotherham S60", "urgency": "high", "preferred_date": null}}
+{"message": "block paving driveway quote please, medium urgency, Doncaster DN1", "label": {"name": null, "job_type": "block paving", "location": "Doncaster DN1", "urgency": "medium", "preferred_date": null}}
