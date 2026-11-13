@@ -1,21 +1,27 @@
-"""Redact personal data past the 30-day retention window (D-021, issue #34).
+"""Redact personal data past its retention window (D-021/D-025/D-027, issues #34/#95).
 
-Run manually or on a schedule (``just purge``). Outbound ``to`` and ``body`` fields older than 30
-days are cleared; the SID, status and timestamps stay so aggregate metrics remain correct. The
-wider retention question (``raw_events.payload``, ``job_records.raw_message``) is a separate
-founder decision — those tables are the business data itself, so they are not touched here.
+Run manually or on a schedule (``just purge``).
+
+- ``outbound_messages.to``/``body``: redacted after 30 days (D-021, D-025).
+- ``raw_events.payload``/``caller_number`` and ``llm_output_audits.raw_output``: redacted after
+  90 days (D-027). ``job_records`` and ``human_edits`` are the business record and are kept.
 """
 
 from agent_ant_core.db.outbound_sms import purge_personal_data
+from agent_ant_core.db.retention import redact_llm_outputs, redact_raw_events
 from agent_ant_core.db.session import get_sessionmaker
 
 
 def main() -> int:
     with get_sessionmaker()() as session:
-        purged = purge_personal_data(session)
+        outbound = purge_personal_data(session)
+        raw_events = redact_raw_events(session)
+        audits = redact_llm_outputs(session)
         session.commit()
 
-    print(f"redacted {purged} outbound message(s)")
+    print(
+        f"redacted {outbound} outbound message(s), {raw_events} raw event(s), {audits} audit row(s)"
+    )
     return 0
 
 
