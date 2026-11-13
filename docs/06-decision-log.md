@@ -1,7 +1,7 @@
 ---
 title: Decision Log
 status: draft
-version: 0.15
+version: 0.16
 last_updated: 2026-11-13
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
@@ -62,6 +62,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-019 | HELP/STOP opt-out: handle ourselves, confirm STOP and reply HELP (fixed templates) | accepted | 2026-11-13 |
 | D-020 | Production hosting: AWS App Runner (containers) for the stateless API (#29) | accepted | 2026-11-13 |
 | D-021 | Outbound SMS is persisted (`outbound_messages`) with status callbacks and 30-day retention (#73) | accepted | 2026-11-13 |
+| D-022 | Business metrics frozen: capture rate, reply rate, jobs booked, edit rate (#30) | accepted | 2026-11-13 |
 
 ## Entries
 
@@ -502,6 +503,35 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — drop a table and the callback route. The only irreversible part is the
   retention decision, which is a policy line, not a schema constraint.
 
+### D-022 — Business metrics frozen: capture rate, reply rate, jobs booked, edit rate (#30)
+- **Date:** 2026-11-13
+- **Status:** accepted
+- **Context:** #30 asked for "capture rate, reply rate, jobs booked, edit rate". docs/01's
+  definitions were deliberately loose ("missed calls that produced a stored record", "human edits
+  ÷ AI-produced job records"). A metric must be frozen *before* it is read, or its line can be
+  moved after seeing results (Ries — the docs/01 anti-pattern). D-021 made "texts sent"
+  queryable, so the reply-rate denominator can finally be real rather than "missed calls".
+- **Decision:** freeze the exact counts, computed in `agent_ant_core/metrics.py`:
+  - **capture_rate** = `job_records ÷ voice_calls` — jobs captured per missed call. Every
+    `job_records` row counts as captured (extraction wrote it), whatever its later status.
+  - **reply_rate** = `sms_replies ÷ outbound_messages` — replies per auto-text sent. Gates H6.
+  - **jobs_booked** = `count(job_records WHERE status='approved')` — a count, the money metric.
+  - **edit_rate** = `distinct jobs with ≥1 human_edit ÷ job_records` — corrections per AI job, the
+    LLM-drift alarm.
+  - Each rate is `0.0` when its denominator is empty.
+- **Consequences:**
+  - Exposed on the dashboard (server-rendered, D-014) as counts plus percentages, e.g.
+    "3 jobs / 10 missed calls (30%)".
+  - **H6's reply-rate threshold is still not frozen.** The issue's second box ("freeze after the
+    first live week") is deferred: `reply_rate` is computed now, but no pass line exists until
+    there is a live week to set it from.
+  - Accepted caveat: `capture_rate` counts every `job_records` row, and a reply with no missed
+    call (a caller texting the number directly) still produces a job, so the ratio can exceed 1.0
+    in theory. Harmless at MVP volume.
+- **Source:** #30; docs/01 metric definitions; Ries, *The Lean Startup* (2011), innovation accounting.
+- **Reversible?:** cheap — the definitions are one module. Changing any of them after the first
+  live read invalidates that read, so supersede instead (append a new entry).
+
 ## Anti-patterns
 
 - ⚠️ **Editing history.** Rewriting an entry hides why a choice was made. Supersede it instead.
@@ -517,6 +547,8 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
+- **0.16 (2026-11-13)** — D-022 accepted: the four business metrics frozen and exposed on the
+  dashboard (#30).
 - **0.15 (2026-11-13)** — D-021 accepted: outbound SMS persisted with status callbacks and a
   30-day retention line for personal fields (#73).
 - **0.14 (2026-11-13)** — D-020 accepted: AWS App Runner for the stateless API (spike 07).
