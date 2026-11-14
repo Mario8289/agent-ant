@@ -107,6 +107,35 @@ def test_valid_request_is_stored_and_answered_with_twiml(session: Session, engin
     )
 
 
+def test_twiml_prompts_for_a_voicemail_and_asks_twilio_to_transcribe(
+    session: Session, engine: Engine
+) -> None:
+    client = _client(_use(session), engine=engine)
+    response = client.post(PATH, data=FORM, headers=_sign(_url(client)))
+
+    root = ET.fromstring(response.text)
+    say = root.find("Say")
+    record = root.find("Record")
+
+    assert say is not None and "leave a message" in (say.text or "")
+    assert record is not None
+    assert record.get("transcribe") == "true"
+    assert record.get("maxLength") == "60"
+    # Without PUBLIC_BASE_URL the callback falls back to a relative path.
+    assert record.get("transcribeCallback") == "/webhooks/voicemail-transcription"
+
+
+def test_transcribe_callback_uses_the_public_base_url(session: Session, engine: Engine) -> None:
+    public = "https://example.ngrok.app"
+    client = _client(_use(session), engine=engine, public_base_url=public)
+    response = client.post(PATH, data=FORM, headers=_sign(public + PATH))
+
+    record = ET.fromstring(response.text).find("Record")
+
+    assert record is not None
+    assert record.get("transcribeCallback") == f"{public}/webhooks/voicemail-transcription"
+
+
 def test_retry_gets_the_same_200_and_is_stored_once(session: Session, engine: Engine) -> None:
     client = _client(_use(session), engine=engine)
     headers = _sign(_url(client))
