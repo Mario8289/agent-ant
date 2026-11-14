@@ -70,7 +70,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 | D-027 | Retention + erasure: raw/audit data redacted at 90 days, job records kept, on-request erase (#95) | accepted | 2026-11-13 |
 | D-028 | Schedule retry/purge via CDK: EventBridge Scheduler → ECS Fargate (#96) | accepted | 2026-11-13 |
 | D-029 | Voicemail-to-text: async Twilio transcription feeds the extraction pipeline (#33) | accepted | 2026-11-14 |
-| D-030 | Agent roadmap is planned, not built: epics for agents 1–4 blocked by the prototype and its gates | accepted | 2026-11-14 |
+| D-031 | Agent roadmap is planned, not built: epics for agents 1–4 blocked by the prototype and its gates | accepted | 2026-11-14 |
 
 ## Entries
 
@@ -739,13 +739,15 @@ here as a single entry. Decisions that need more space get a full ADR in
 - **Reversible?:** cheap — revert the TwiML to the hangup-only version and drop the route; any
   stored `voicemail` rows are inert.
 
-### D-030 — Agent roadmap is planned, not built: epics for agents 1–4 blocked by the prototype and its gates
+### D-031 — Agent roadmap is planned, not built: epics for agents 1–4 blocked by the prototype and its gates
 - **Date:** 2026-11-14
 - **Status:** accepted
 - **Context:** The missed-call agent is nearly complete and the founder wants the follow-on
   agents ranked and written up, so the product can grow towards "a sole trader with the back
   office of a larger firm". D-003 says no second agent is built during the 6 weeks, H4 (pull for
   adjacent jobs) is untested, and the discovery sheet (doc 03) is still empty.
+  D-030 is reserved for the customer and job lifecycle decision (#122, ADR 0003), which is
+  recorded separately; this entry was renumbered to avoid the clash.
 - **Decision:**
   - [12-agent-roadmap.md](./12-agent-roadmap.md) records 12 candidate agents in ranked order,
     grouped into roles (secretary, estimator, accounts clerk and so on).
@@ -754,6 +756,8 @@ here as a single entry. Decisions that need more space get a full ADR in
   - Every one of those issues carries `blocked-by-gate` and is blocked by the prototype epic
     (#3), G0a (#10), the Week 4 gate (#32) and the Week 6 review (#37). The quote drafter is also
     blocked by the 10x-axis decision (#15).
+  - The shared customer and job lifecycle (epic #121) is a prerequisite for all four: it supplies
+    the job states, the scheduled actions and the consent finding these epics rely on.
   - **D-003 stays in force.** Planning is allowed; build hours on any of these agents are not.
   - "Quotes priced the way the trader prices" is recorded as the candidate 10x axis for H5. It
     is a hypothesis, not a result.
@@ -782,7 +786,7 @@ here as a single entry. Decisions that need more space get a full ADR in
 
 ## Change history
 
-- **0.23 (2026-11-14)** — D-030 accepted: the agent roadmap (doc 12) is planned but not built;
+- **0.23 (2026-11-14)** — D-031 accepted: the agent roadmap (doc 12) is planned but not built;
   epics for agents 1–4 are blocked by the prototype and its gates. D-003 stays in force.
 - **0.22 (2026-11-14)** — D-029 accepted: voicemail-to-text adds an async Twilio transcription
   webhook feeding the same extraction pipeline; the missed-call TwiML now prompts for a message and

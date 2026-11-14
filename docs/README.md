@@ -40,7 +40,7 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 | [08 — Telephony Forwarding Test](./08-telephony-forwarding-test.md) | G0b runbook: Twilio setup, iPhone no-answer codes, pass/fail | draft |
 | [09 — Execution Plan](./09-execution-plan.md) | What to do next, in order, week by week, with the gates | draft |
 | [10 — Manual Steps](./10-manual-steps.md) | Console clicks and real-world steps only you can do, with what each blocks | draft |
-| [12 — Agent Roadmap](./12-agent-roadmap.md) | Ranked agents after `missed_call`, grouped into roles; planned, not built (D-030) | draft |
+| [12 — Agent Roadmap](./12-agent-roadmap.md) | Ranked agents after `missed_call`, grouped into roles; planned, not built (D-031) | draft |
 | [Glossary](./glossary.md) | Plain-English definitions: telephony, Twilio, product and process terms | draft |
 
 Longer decisions live in [adr/](./adr/README.md):

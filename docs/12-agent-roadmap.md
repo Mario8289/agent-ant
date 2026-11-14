@@ -19,7 +19,7 @@ Rank the agents that could follow `missed_call`, say what each one does, and gro
 roles a tradesperson recognises. The product idea is that a sole trader should feel they have
 the back office of a much larger firm: a secretary, an estimator, an accounts clerk.
 
-This is a **plan, not a build order that has started**. Per D-030, no code for any agent here
+This is a **plan, not a build order that has started**. Per D-031, no code for any agent here
 is written until the missed-call prototype is finished and its gates have passed.
 
 > ⚠️ **The ranking is a desk judgement.** The discovery sheet
@@ -108,7 +108,7 @@ the first four have taught us something; stories for them now would be guesses.
 | # | Agent | Epic | Stories |
 |---|---|---|---|
 | 1 | Quote drafter | [#103](https://github.com/Mario8289/agent-ant/issues/103) | #104–#109 |
-| 2 | Follow-up chaser | [#110](https://github.com/Mario8289/agent-ant/issues/110) | #111–#114 |
+| 2 | Follow-up chaser | [#110](https://github.com/Mario8289/agent-ant/issues/110) | #111–#113, plus #128 from the lifecycle epic (replaces #114) |
 | 3 | Booking and diary | [#115](https://github.com/Mario8289/agent-ant/issues/115) | #116–#120 |
 | 4 | Invoice and payment chaser | [#132](https://github.com/Mario8289/agent-ant/issues/132) | #133–#137 |
 
@@ -122,6 +122,7 @@ Every epic and story carries the `blocked-by-gate` label and is blocked by:
 | G0a discovery: ≥3 of 6 cite a specific missed call and a lost job | [#10](https://github.com/Mario8289/agent-ant/issues/10) |
 | Week 4 gate: Dad approves or corrects ≥1 real job unaided (H2) | [#32](https://github.com/Mario8289/agent-ant/issues/32) |
 | Week 6 continue/kill review | [#37](https://github.com/Mario8289/agent-ant/issues/37) |
+| The shared customer and job lifecycle exists (job states, scheduled actions, consent finding) | [#121](https://github.com/Mario8289/agent-ant/issues/121) |
 
 The quote drafter is also blocked by the 10x-axis decision
 ([#15](https://github.com/Mario8289/agent-ant/issues/15)).
@@ -176,4 +177,4 @@ unverified.
 ## Change history
 
 - **0.1 (2026-11-14)** — created: competitor coverage, 12 ranked agents, role grouping, the
-  quoting hypothesis for H5, and the blocking rule (D-030).
+  quoting hypothesis for H5, and the blocking rule (D-031).
