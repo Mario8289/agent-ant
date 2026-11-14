@@ -1,9 +1,9 @@
 ---
 title: Request Flows
 status: draft
-version: 0.9
+version: 0.10
 last_updated: 2026-11-14
-verified_against: 1cf3c85
+verified_against: ccd7c68
 ---
 
 # 11 — Request Flows
@@ -400,9 +400,15 @@ The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so
 is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
 D-005). It has no JSON API and no auth yet — one page, four routes. It also renders the four
 business metrics (capture rate, reply rate, jobs booked, edit rate — D-022) at the top, computed
-by `agent_ant_core.metrics.compute_metrics`, and a failure panel listing failed/dead SMS sends
-(`db/outbound_sms.list_failed_messages`, D-023) plus failed/dead extractions
-(`db/extraction.list_failed_extractions`, D-024).
+by `agent_ant_core.metrics.compute_metrics`, plus an additive jobs-by-source breakdown
+(`sms_jobs` / `voicemail_jobs`, #33) that does not touch the frozen definitions, and a failure
+panel listing failed/dead SMS sends (`db/outbound_sms.list_failed_messages`, D-023) plus
+failed/dead extractions (`db/extraction.list_failed_extractions`, D-024).
+
+Each job card is labelled by capture path (SMS reply vs voicemail, read off
+`job.raw_event.source`) and flags a missing `job_type` or `location` so the tradesperson can see
+what the extraction could not fill in. The failed-extractions panel shows the transcript for a
+voicemail and the body for a reply, so a dead lead can be read whichever path it arrived by.
 
 ```mermaid
 sequenceDiagram
@@ -448,6 +454,7 @@ same boundary as `webhooks.py`.
 | Route (list) | `apps/api/src/agent_ant_api/dashboard.py::dashboard` |
 | Route (approve / reject / edit) | `dashboard.py::approve`, `::reject`, `::edit` |
 | List captured jobs | `packages/core/src/agent_ant_core/db/approval.py::list_captured_jobs` |
+| Metrics | `agent_ant_core/metrics.py::compute_metrics` |
 | Approve | `approval.py::approve_job` |
 | Reject | `approval.py::reject_job` |
 | Edit + approve | `approval.py::edit_job` |
@@ -555,6 +562,7 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.10 | 2026-11-14 | Dashboard labels each job by capture path, flags missing `job_type`/`location`, shows a voicemail transcript in the failure panel, and adds an additive jobs-by-source breakdown to the metrics block (#33) |
 | 0.9 | 2026-11-14 | Added the voicemail-transcription flow: `raw_events.source` gains `voicemail`, the missed-call TwiML prompts for a message, and the transcript feeds the shared extraction pipeline; D-029 |
 | 0.8 | 2026-11-13 | 90-day retention for `raw_events` + `llm_output_audits` and on-request erasure (`just erase`); D-027 |
 | 0.7 | 2026-11-13 | Extraction retry + dead-letter (D-024) and the 30-day outbound purge (D-025); `raw_events` gains `extraction_attempts`/`extraction_status` |

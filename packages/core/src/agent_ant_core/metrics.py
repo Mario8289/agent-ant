@@ -22,7 +22,12 @@ from agent_ant_core.db.models import (
 
 @dataclass(frozen=True)
 class Metrics:
-    """Counts and the rates derived from them. Rates are 0 when the denominator is empty."""
+    """Counts and the rates derived from them. Rates are 0 when the denominator is empty.
+
+    ``sms_jobs`` and ``voicemail_jobs`` are an additive breakdown of ``jobs`` by capture path
+    (#33), shown on the dashboard. They are not part of the frozen D-022 definitions, and they
+    always sum to ``jobs`` (a job's raw event is an SMS reply or a voicemail, never a call).
+    """
 
     missed_calls: int
     jobs: int
@@ -30,6 +35,8 @@ class Metrics:
     replies: int
     jobs_booked: int
     edited_jobs: int
+    sms_jobs: int
+    voicemail_jobs: int
 
     @property
     def capture_rate(self) -> float:
@@ -72,6 +79,16 @@ def compute_metrics(session: Session) -> Metrics:
         .join(LLMOutputAudit, HumanEdit.llm_output_id == LLMOutputAudit.id)
         .join(JobRecord, LLMOutputAudit.job_id == JobRecord.id)
     )
+    # Additive breakdown of jobs by capture path (#33). A job's raw event is always an sms_reply
+    # or a voicemail (voice calls are never extracted), so the two sum to ``jobs``.
+    jobs_by_source = dict(
+        session.execute(
+            select(RawEvent.source, func.count())
+            .select_from(JobRecord)
+            .join(RawEvent, JobRecord.raw_event_id == RawEvent.id)
+            .group_by(RawEvent.source)
+        ).all()
+    )
 
     return Metrics(
         missed_calls=missed_calls or 0,
@@ -80,4 +97,6 @@ def compute_metrics(session: Session) -> Metrics:
         replies=replies or 0,
         jobs_booked=jobs_booked or 0,
         edited_jobs=edited_jobs or 0,
+        sms_jobs=jobs_by_source.get("sms_reply", 0),
+        voicemail_jobs=jobs_by_source.get("voicemail", 0),
     )

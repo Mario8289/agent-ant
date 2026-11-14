@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Explicit constraint names keep Alembic revisions deterministic across machines.
 NAMING_CONVENTION = {
@@ -102,6 +102,9 @@ class JobRecord(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     # The reply this job was extracted from. Anchors the job to real, persisted data.
     raw_event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("raw_events.id"))
+    # Navigation to the inbound event, so the dashboard can label a job by capture path
+    # (SMS reply vs voicemail, #33) without a hand-rolled join in the template.
+    raw_event: Mapped[RawEvent] = relationship()
     idempotency_key: Mapped[str] = mapped_column(Text, unique=True)
     caller_number: Mapped[str] = mapped_column(Text)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
