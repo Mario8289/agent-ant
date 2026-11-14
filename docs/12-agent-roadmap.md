@@ -1,7 +1,7 @@
 ---
 title: Agent Roadmap
 status: draft
-version: 0.1
+version: 0.2
 last_updated: 2026-11-14
 sources:
   - Thiel — Zero to One (2014) — 10x on one axis, escape competition — verified (doc 00)
@@ -140,6 +140,62 @@ The non-negotiable rules in `AGENTS.md` apply unchanged. Three matter most here:
 - **Trusted fields never come from the LLM.** Prices on a sent quote or invoice are the values
   the trader approved, never a model output passed straight through.
 
+## 7. How each agent fits the shared lifecycle
+
+A desk check that the lifecycle in epic
+[#121](https://github.com/Mario8289/agent-ant/issues/121) can hold every agent in §3. It is an
+input to the lifecycle ADR ([#122](https://github.com/Mario8289/agent-ant/issues/122)), not a
+design for the agents.
+
+The model it checks against:
+
+- **Job status:** `enquiry → quoted → booked → in_progress ⇄ on_hold → completed → paid`,
+  with exits `declined`, `lost` and `cancelled`.
+- **Agents propose, core decides.** Each agent declares the transitions it may propose.
+- **Human-only transitions:** `booked`, `paid` and `cancelled`.
+- **Triggers:** an agent subscribes to a job entering a status, and core writes a scheduled
+  action for it.
+
+| # | Agent | Triggered by | Transitions it proposes | Waits for Dad on |
+|---|---|---|---|---|
+| 0 | Missed call (built) | Inbound call and SMS webhooks | Creates the job at `enquiry`; sets `review_status` | Reviewing the extraction |
+| 1 | Quote drafter | Extraction approved on an `enquiry` job ⚠️ G2 | `enquiry → quoted`, only after Dad approves and the quote is sent | Approving the draft quote |
+| 2 | Follow-up chaser | Entering `enquiry` (nudge non-repliers ⚠️ G1); entering `quoted` (chase) | `enquiry → lost`, `quoted → lost` | Nothing for fixed-template nudges; pause and stop on the dashboard |
+| 3 | Booking and diary | Quote accepted ⚠️ G2; entering `booked` (calendar, reminders) | None. Dad books | Confirming the slot (that is the `booked` transition) |
+| 4 | Invoice and payment chaser | Entering `completed` (draft invoice); invoice sent ⚠️ G2 (chase) | None. Dad marks `paid` | Approving the invoice |
+| 5 | Multi-channel inbox | Inbound email, web form and platform webhooks | Creates the job at `enquiry`, like agent 0 | Reviewing the extraction |
+| 6 | Reviews and reputation | Entering `paid` (request, #129); a new Google review ⚠️ G3 | None | Approving reply drafts |
+| 7 | Bookkeeper | Entering `completed` and `paid` (job profit); receipt uploaded ⚠️ G3 | None | Categorising expenses |
+| 8 | Marketing content | Entering `completed` (post, #139); time since `paid` (reactivation, #131) | None | Approving every post |
+| 9 | Materials and procurement | Entering `quoted` (materials list); entering `booked` (purchase order) | None | Approving any order |
+| 10 | Compliance and paperwork | Renewal dates, not jobs ⚠️ G3 | None | Everything |
+| 11 | Business analyst | Weekly schedule ⚠️ G3; reads `job_events` | None (read-only) | Nothing |
+| 12 | Live voice receptionist | Inbound call | Creates the job at `enquiry`, like agent 0 | Reviewing the extraction |
+
+### What this shows
+
+The model holds. No agent needs `booked`, `paid` or `cancelled`, so those can stay human-only
+without blocking anything. Only the agents that create jobs (0, 5, 12), the quote drafter and
+the chaser propose transitions; the rest only subscribe. Agents with their own documents
+(quotes, invoices, visits) keep that status in their own tables, which supports dropping
+`invoiced` from the job status.
+
+It also found four gaps for the ADR (#122) to settle:
+
+- **G1. No job exists until the caller replies.** Today `job_records` is written only after a
+  valid extraction ([doc 11](./11-request-flows.md)), so a caller who never replies has no job
+  for the chaser to nudge. Proposed: create the job at `enquiry` when the call is missed, and
+  let extraction fill in its fields. Affects #123 and #124.
+- **G2. Some triggers are not status changes.** Extraction approved, quote accepted and
+  invoice sent all start agent work without moving the job. Proposed: triggers subscribe to
+  `job_events` event types, of which a status change is one. Affects #124 and #126.
+- **G3. Some work is not tied to a job.** Review replies, receipts, renewal dates and the
+  weekly digest have no job. Proposed: `scheduled_actions.job_id` and `customer_id` are both
+  nullable, and triggers can also be time-based. Affects #126.
+- **G4. Visits.** The ADR uses `on_hold` for breaks and defers visit records. Booking and diary
+  (agent 3) is where visits arrive. Proposed: visits are that agent's own table, not a job
+  status, so nothing in the lifecycle changes when they do.
+
 ## Anti-patterns
 
 - ⚠️ **Building agent 2 because the plan exists.** The plan is cheap; the gates are the test.
@@ -176,5 +232,7 @@ unverified.
 
 ## Change history
 
+- **0.2 (2026-11-14)** — added §7: how each agent fits the shared lifecycle (#121), and
+  four gaps (G1–G4) for the lifecycle ADR (#122).
 - **0.1 (2026-11-14)** — created: competitor coverage, 12 ranked agents, role grouping, the
   quoting hypothesis for H5, and the blocking rule (D-031).
