@@ -49,7 +49,11 @@ def mark_failed(message: OutboundMessage, error_code: str | None) -> None:
 
 
 def retry_failed_sends(
-    session: Session, send: SendFn, *, max_attempts: int = MAX_SEND_ATTEMPTS
+    session: Session,
+    send: SendFn,
+    *,
+    max_attempts: int = MAX_SEND_ATTEMPTS,
+    on_dead_letter: Callable[[OutboundMessage], None] | None = None,
 ) -> int:
     """Re-attempt failed sends, dead-lettering those that exhaust their attempts.
 
@@ -57,6 +61,11 @@ def retry_failed_sends(
     success records the new SID and clears the error, a failure keeps it ``failed`` and, once the
     bound is reached, moves it to ``dead`` so it can be found and handled by hand. Returns how
     many messages succeeded. The caller commits.
+
+    ``on_dead_letter`` is called once per message that is dead-lettered in this run, *after* its
+    status is set to ``dead``. It exists so the caller can alert a human without ``core``
+    importing the app layer. It runs before the caller's commit; a crash between the callback and
+    the commit simply means the next run dead-letters (and re-alerts) again, which is harmless.
     """
     failed = (
         session.execute(
@@ -79,6 +88,8 @@ def retry_failed_sends(
         except Exception:
             if message.attempts >= max_attempts:
                 message.status = "dead"
+                if on_dead_letter is not None:
+                    on_dead_letter(message)
             continue
         mark_sent(message, sid)
         succeeded += 1

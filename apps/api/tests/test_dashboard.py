@@ -78,6 +78,28 @@ def test_dashboard_lists_captured_jobs(session: Session) -> None:
     assert "wardrobe fitting" in response.text
 
 
+def test_failed_extraction_shows_the_reply_body(session: Session) -> None:
+    persist_raw_event(
+        session,
+        idempotency_key="SM-dead",
+        source="sms_reply",
+        caller_number=CALLER,
+        received_at=datetime.now(UTC),
+        payload={"Body": "burst pipe under the sink"},
+    )
+    reply = session.execute(
+        select(RawEvent).where(RawEvent.idempotency_key == "SM-dead")
+    ).scalar_one()
+    reply.extraction_status = "dead"
+    reply.extraction_attempts = 3
+    session.commit()
+
+    response = _client(session).get("/dashboard")
+
+    assert response.status_code == 200
+    assert "burst pipe under the sink" in response.text
+
+
 def test_approve_endpoint_approves(session: Session) -> None:
     job_id = _captured_job(session)
     response = _client(session).post(f"/jobs/{job_id}/approve", follow_redirects=False)

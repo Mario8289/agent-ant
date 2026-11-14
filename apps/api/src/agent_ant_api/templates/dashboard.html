@@ -36,7 +36,9 @@
       <ul>
         {% for reply in failed_extractions %}
           <li>
-            reply {{ reply.idempotency_key }} — {{ reply.extraction_status }}, attempt {{ reply.extraction_attempts }}
+            <strong>reply {{ reply.idempotency_key }}</strong> — {{ reply.extraction_status }}, attempt {{ reply.extraction_attempts }}
+            {% set body = reply.payload.get('Body', '') if reply.payload else '' %}
+            {% if body %}<br><em>{{ body }}</em>{% endif %}
           </li>
         {% endfor %}
       </ul>

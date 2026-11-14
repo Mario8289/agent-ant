@@ -7,6 +7,7 @@ reaches the database.
 
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
@@ -15,10 +16,12 @@ from sqlalchemy.orm import Session
 from twilio.base.exceptions import TwilioRestException
 from twilio.request_validator import RequestValidator
 
+from agent_ant_api import sms as sms_module
 from agent_ant_api.extraction import get_session_factory
 from agent_ant_api.main import create_app
 from agent_ant_api.sms import (
     SmsSender,
+    alert_dead_letter,
     build_help_reply,
     build_missed_call_message,
     build_stop_confirmation,
@@ -318,3 +321,30 @@ def test_opted_out_caller_is_not_texted_on_a_missed_call(session: Session, engin
     # Only the STOP confirmation went out; the missed-call text was suppressed.
     assert sms.sent == [(FORM["From"], build_stop_confirmation(None))]
     assert all(body != build_missed_call_message(None) for _, body in sms.sent)
+
+
+# --- Dead-letter alert (issue #96) --------------------------------------------------------
+
+
+def test_dead_letter_alert_carries_the_trigger_sid(monkeypatch, session: Session) -> None:
+    call = RawEvent(
+        idempotency_key=FORM["CallSid"],
+        source="voice_call",
+        caller_number=FORM["From"],
+        received_at=datetime.now(UTC),
+        payload=FORM,
+    )
+    session.add(call)
+    session.commit()
+    message = OutboundMessage(raw_event_id=call.id, to=FORM["From"], body="hi", status="dead")
+    session.add(message)
+    session.commit()
+
+    sent: list[str] = []
+    monkeypatch.setattr(sms_module, "notify_support", sent.append)
+
+    alert_dead_letter(session, message)
+
+    assert sent == [f"auto-SMS send dead-lettered for {FORM['CallSid']} — needs manual retry"]
+    assert FORM["From"] not in sent[0]  # never the caller number (D-026)
+    assert "hi" not in sent[0]  # never the message body

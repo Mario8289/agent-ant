@@ -1,0 +1,9 @@
+# CDK generated output (the synthesized CloudFormation template)
+cdk.out/
+
+# Node CLI artifacts (the cdk CLI is invoked via npx; nothing here is committed)
+node_modules/
+
+# Python/uv (also covered by the repo root .gitignore, repeated for a standalone project)
+.venv/
+__pycache__/

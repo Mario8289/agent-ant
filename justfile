@@ -61,6 +61,20 @@ erase number:
 test-slack:
     uv run --all-packages python scripts/test_slack.py
 
+# Synth / diff / deploy the ops scheduler CDK stack (issue #96). Pass the account-specific
+# values through as -c key=value; see infra/cdk/README.md for the keys. Needs Node (npx).
+cdk-synth *args:
+    cd infra/cdk && npx --yes aws-cdk@latest synth {{args}}
+
+cdk-diff *args:
+    cd infra/cdk && npx --yes aws-cdk@latest diff {{args}}
+
+cdk-deploy *args:
+    cd infra/cdk && npx --yes aws-cdk@latest deploy {{args}}
+
+cdk-destroy *args:
+    cd infra/cdk && npx --yes aws-cdk@latest destroy {{args}}
+
 # Everything CI runs
 check: lint typecheck test
 

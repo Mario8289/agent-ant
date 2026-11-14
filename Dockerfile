@@ -16,6 +16,9 @@ COPY pyproject.toml uv.lock ./
 COPY packages ./packages
 COPY agents ./agents
 COPY apps ./apps
+# The retry/purge scripts run as one-off ECS tasks against this same image (#96), so they must
+# be present in it. They are not part of any package; they are plain scripts at these paths.
+COPY scripts ./scripts
 
 # Install the API and its workspace deps only; no dev group, frozen to the committed lockfile.
 RUN uv sync --frozen --no-dev --package agent-ant-api
