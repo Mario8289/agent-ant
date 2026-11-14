@@ -1,9 +1,9 @@
 ---
 title: Request Flows
 status: draft
-version: 0.8
-last_updated: 2026-11-13
-verified_against: 1a432df
+version: 0.10
+last_updated: 2026-11-14
+verified_against: d17aa9e
 ---
 
 # 11 — Request Flows
@@ -28,6 +28,7 @@ API source has moved since, distrust the diagrams before the code.
 | Someone rings and we miss it — what happens? | [Missed call: happy path](#missed-call-happy-path) | `webhooks.py::missed_call` |
 | Why doesn't a Twilio retry send a second text? | [Duplicate delivery](#duplicate-delivery) | `idempotency.py::persist_raw_event` |
 | The customer replies — what happens? | [SMS reply](#sms-reply) | `webhooks.py::sms_reply` |
+| The caller leaves a voicemail — what happens? | [Voicemail transcription](#voicemail-transcription) | `webhooks.py::voicemail_transcription` |
 | The tradesperson reviews a captured job — what happens? | [Human approval dashboard](#human-approval-dashboard) | `dashboard.py::dashboard` |
 | What if the signature is wrong, or Twilio is down? | [Failure paths](#failure-paths) | `security.py`, `sms.py` |
 | What does a row actually look like? | [Row shapes](#row-shapes) | `models.py::RawEvent` |
@@ -58,8 +59,8 @@ sequenceDiagram
     A->>DB: INSERT ON CONFLICT DO NOTHING RETURNING id
     DB-->>A: id returned, so inserted = True
     A->>DB: COMMIT
-    A-->>T: 200 with TwiML - Say, then Hangup
-    T->>C: caller hears "we will send you a text shortly"
+    A-->>T: 200 with TwiML - Say, then Record (transcribe)
+    T->>C: caller hears "leave a message after the tone"
     A->>BT: add_task send_missed_call_sms
     Note over BT: runs after the response is sent
     BT->>TA: messages.create with the fixed template
@@ -87,7 +88,7 @@ sequenceDiagram
 | Idempotent insert | `packages/core/src/agent_ant_core/db/idempotency.py::persist_raw_event` |
 | Transaction boundary | `webhooks.py::missed_call` — the `session.commit()` |
 | Session per request | `webhooks.py::get_session` → `db/session.py::get_sessionmaker` |
-| TwiML text | `webhooks.py::MISSED_CALL_TWIML` |
+| TwiML text | `webhooks.py::build_missed_call_twiml` — the `<Say>` prompt + `<Record transcribe>` |
 | Sender factory | `apps/api/src/agent_ant_api/sms.py::get_sms_sender` |
 | Template text | `apps/api/src/agent_ant_api/sms.py::build_missed_call_message` |
 | Background send | `apps/api/src/agent_ant_api/sms.py::send_missed_call_sms` |
@@ -266,6 +267,79 @@ can ring back.
 `Body` is not its own column: Twilio's field set changes per message, so JSONB absorbs that.
 Extraction reads it as `row.payload["Body"]` (or `payload->>'Body'` in SQL).
 
+## Voicemail transcription
+
+A third, independent webhook. Twilio posts it when it finishes transcribing a voicemail, seconds
+after the caller has hung up. It is the second capture path (D-029): the same extraction pipeline
+as an SMS reply, fed by the transcript instead of the reply body. The link to the missed call is
+exact — the callback carries `CallSid`, the call's own identifier — rather than the number
+heuristic the SMS reply relies on.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Caller
+    participant T as Twilio
+    participant A as FastAPI voicemail-transcription route
+    participant DB as Postgres raw_events
+    participant BG as BackgroundTasks
+    participant JR as job_records + llm_output_audits
+
+    C->>T: leaves a message after the tone
+    T->>T: records, then transcribes (async)
+    T->>A: POST /webhooks/voicemail-transcription, form-encoded, RecordingSid + TranscriptionText
+    A->>A: security.verified_twilio_form
+    A->>DB: SELECT id of the voice_call whose idempotency_key = CallSid
+    DB-->>A: 7, or NULL when there is no matching missed call
+    A->>DB: INSERT voicemail with the whole form and related_event_id
+    A->>DB: COMMIT
+    A-->>T: 200 with an empty body
+    A->>BG: add_task extract_reply (only when TranscriptionStatus = completed)
+    BG->>DB: SELECT the stored voicemail by RecordingSid
+    BG->>BG: process_reply over TranscriptionText (same pipeline as a reply)
+    BG->>JR: INSERT job_records (status captured) when valid
+    BG->>JR: INSERT llm_output_audits (always, with job_id when captured)
+    BG->>DB: COMMIT
+```
+
+| Outcome | Stored as | Response |
+|---|---|---|
+| `TranscriptionStatus` = completed | `source = voicemail`, extracted | 200 |
+| `TranscriptionStatus` = failed | `source = voicemail`, not extracted | 200 |
+| Duplicate `RecordingSid` | not stored | 200 |
+| No matching call | `related_event_id = NULL` | 200 |
+| Bad signature | not stored | 403 |
+
+A failed transcription is stored but not extracted — there is no text to work with. It still lands
+on the dashboard's failure panel if `just retry-extractions` later picks it up, the same "needs a
+human" signal as any failed extraction.
+
+### Code map
+
+| Step | Symbol |
+|---|---|
+| Route | `webhooks.py::voicemail_transcription` |
+| Recording TwiML | `webhooks.py::build_missed_call_twiml` — the `<Record transcribe>` verb |
+| Related-call lookup | `webhooks.py::voicemail_transcription` — the `select(RawEvent.id)` by `CallSid` |
+| Insert | `idempotency.py::persist_raw_event` |
+| Background task | `extraction.py::extract_reply` (shared with SMS replies) |
+| Text-field selection | `extraction.py::_message_text` — `Body` for replies, `TranscriptionText` for voicemail |
+| Extraction + persistence | `agent_ant_missed_call.processor::process_reply` |
+| Retry loop | `extraction.py::retry_failed_extractions` (`candidate_replies` covers both sources) |
+| Retention | `db/retention.py::redact_raw_events` (retryable voicemails protected like replies) |
+| Migration | `migrations/versions/…0009…` (`source` gains `voicemail`) |
+
+### Twilio field → column
+
+| Twilio form field | Becomes | Column |
+|---|---|---|
+| `RecordingSid` | idempotency key | `raw_events.idempotency_key` |
+| `From` | caller | `raw_events.caller_number` |
+| `TranscriptionText`, `CallSid`, … | untouched | `raw_events.payload` |
+| — | literal | `raw_events.source = 'voicemail'` |
+| — | lookup by `CallSid` | `raw_events.related_event_id` |
+| — | retry bookkeeping | `raw_events.extraction_attempts`, `raw_events.extraction_status` |
+
 ## Outbound SMS and status callbacks
 
 Every auto-text we send is persisted (D-021), so "did we text this caller, and did it deliver?"
@@ -326,9 +400,15 @@ The HITL step (rule 6, D-006): nothing counts as confirmed until a human says so
 is server-rendered (FastAPI + Jinja2) and lives in the API, not a separate deployable (D-014,
 D-005). It has no JSON API and no auth yet — one page, four routes. It also renders the four
 business metrics (capture rate, reply rate, jobs booked, edit rate — D-022) at the top, computed
-by `agent_ant_core.metrics.compute_metrics`, and a failure panel listing failed/dead SMS sends
-(`db/outbound_sms.list_failed_messages`, D-023) plus failed/dead extractions
-(`db/extraction.list_failed_extractions`, D-024).
+by `agent_ant_core.metrics.compute_metrics`, plus an additive jobs-by-source breakdown
+(`sms_jobs` / `voicemail_jobs`, #33) that does not touch the frozen definitions, and a failure
+panel listing failed/dead SMS sends (`db/outbound_sms.list_failed_messages`, D-023) plus
+failed/dead extractions (`db/extraction.list_failed_extractions`, D-024).
+
+Each job card is labelled by capture path (SMS reply vs voicemail, read off
+`job.raw_event.source`) and flags a missing `job_type` or `location` so the tradesperson can see
+what the extraction could not fill in. The failed-extractions panel shows the transcript for a
+voicemail and the body for a reply, so a dead lead can be read whichever path it arrived by.
 
 ```mermaid
 sequenceDiagram
@@ -374,6 +454,7 @@ same boundary as `webhooks.py`.
 | Route (list) | `apps/api/src/agent_ant_api/dashboard.py::dashboard` |
 | Route (approve / reject / edit) | `dashboard.py::approve`, `::reject`, `::edit` |
 | List captured jobs | `packages/core/src/agent_ant_core/db/approval.py::list_captured_jobs` |
+| Metrics | `agent_ant_core/metrics.py::compute_metrics` |
 | Approve | `approval.py::approve_job` |
 | Reject | `approval.py::reject_job` |
 | Edit + approve | `approval.py::edit_job` |
@@ -442,11 +523,14 @@ What the table looks like after one missed call and one reply:
 flowchart LR
     A["id 1<br/>source voice_call<br/>idempotency_key CA0000...<br/>caller_number +447700900123<br/>related_event_id NULL<br/>extraction_attempts 0<br/>extraction_status NULL"]
     B["id 2<br/>source sms_reply<br/>idempotency_key SM0000...<br/>caller_number +447700900123<br/>related_event_id 1<br/>extraction_attempts 1<br/>extraction_status done"]
+    C["id 3<br/>source voicemail<br/>idempotency_key RE0000...<br/>caller_number +447700900123<br/>related_event_id 1<br/>extraction_attempts 1<br/>extraction_status done"]
     A -->|answers| B
+    A -->|transcribes| C
 ```
 
-One relation, self-referencing: `sms_reply.related_event_id → voice_call.id`. A voice call never
-points at anything. A reply may point at nothing.
+One relation, self-referencing: `sms_reply.related_event_id → voice_call.id` (found by caller
+number) and `voicemail.related_event_id → voice_call.id` (found by `CallSid`). A voice call never
+points at anything. A reply or voicemail may point at nothing.
 
 `related_event_id` has no `NOT NULL` and no cascade rules beyond the FK, because the link is a
 best guess, not an invariant.
@@ -478,6 +562,8 @@ best guess, not an invariant.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.10 | 2026-11-14 | Dashboard labels each job by capture path, flags missing `job_type`/`location`, shows a voicemail transcript in the failure panel, and adds an additive jobs-by-source breakdown to the metrics block (#33) |
+| 0.9 | 2026-11-14 | Added the voicemail-transcription flow: `raw_events.source` gains `voicemail`, the missed-call TwiML prompts for a message, and the transcript feeds the shared extraction pipeline; D-029 |
 | 0.8 | 2026-11-13 | 90-day retention for `raw_events` + `llm_output_audits` and on-request erasure (`just erase`); D-027 |
 | 0.7 | 2026-11-13 | Extraction retry + dead-letter (D-024) and the 30-day outbound purge (D-025); `raw_events` gains `extraction_attempts`/`extraction_status` |
 | 0.6 | 2026-11-13 | Dashboard now shows the four metrics (D-022) and a failure panel for failed/dead sends (D-023) |

@@ -32,15 +32,30 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 # Fixed text only: the AI never writes free text to customers (D-004). Spoken to the caller
 # whose call was forwarded here because the tradesperson did not answer.
-MISSED_CALL_TWIML = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    "<Response>"
-    "<Say>Sorry we missed your call. We will send you a text message shortly.</Say>"
-    "<Hangup/>"
-    "</Response>"
-)
+def build_missed_call_twiml(public_base_url: str | None) -> str:
+    """TwiML that prompts for a voicemail and asks Twilio to transcribe it (#33).
+
+    The caller hears a fixed prompt and can leave a message. Twilio records it and, after the
+    call ends, transcribes it and POSTs the transcript to the transcription webhook. The
+    ``transcribeCallback`` needs the public URL Twilio can reach; without a configured public
+    base it falls back to a relative path, which Twilio resolves against the voice webhook's host.
+    """
+    callback = (
+        f"{public_base_url.rstrip('/')}/webhooks/voicemail-transcription"
+        if public_base_url
+        else "/webhooks/voicemail-transcription"
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        "<Say>Sorry we missed your call. Please leave a message after the tone and we'll get "
+        "back to you.</Say>"
+        f'<Record transcribe="true" transcribeCallback="{callback}" maxLength="60" />'
+        "</Response>"
+    )
 
 
 def get_session() -> Iterator[Session]:
@@ -92,7 +107,10 @@ def missed_call(
 
     # CallSid only: caller numbers are personal data and stay out of logs.
     logger.info("missed call %s: %s", call_sid, "stored" if inserted else "duplicate ignored")
-    return Response(content=MISSED_CALL_TWIML, media_type="application/xml")
+    return Response(
+        content=build_missed_call_twiml(settings.public_base_url),
+        media_type="application/xml",
+    )
 
 
 @router.post("/webhooks/sms-reply")
@@ -172,6 +190,62 @@ def sms_reply(
             )
 
     logger.info("sms reply %s: %s", message_sid, "stored" if inserted else "duplicate ignored")
+    return Response(status_code=200)
+
+
+@router.post("/webhooks/voicemail-transcription")
+def voicemail_transcription(
+    form: Annotated[dict[str, str], Depends(verified_twilio_form)],
+    session: Annotated[Session, Depends(get_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    llm: Annotated[LLM | None, Depends(get_llm)],
+    session_factory: Annotated[SessionFactory, Depends(get_session_factory)],
+    background: BackgroundTasks,
+) -> Response:
+    """Persist a voicemail transcript and run extraction over it (#33).
+
+    Twilio posts here asynchronously when it finishes transcribing a voicemail (``<Record
+    transcribe="true">``). Keyed on ``RecordingSid`` (rule 3) and linked to the missed call by
+    ``CallSid`` — a stronger link than the SMS reply's number heuristic, because the callback
+    carries the call's own identifier. A completed transcript runs the same extraction pipeline
+    as a reply; a failed transcription is stored but not extracted (there is no text to work
+    with), and a duplicate delivery stores nothing and starts no second extraction.
+    """
+    recording_sid = form.get("RecordingSid")
+    caller = form.get("From")
+    if not recording_sid or not caller:
+        raise HTTPException(status_code=400, detail="RecordingSid and From are required")
+
+    call_sid = form.get("CallSid")
+    related_id = None
+    if call_sid:
+        related_id = session.execute(
+            select(RawEvent.id)
+            .where(RawEvent.source == "voice_call", RawEvent.idempotency_key == call_sid)
+            .limit(1)
+        ).scalar_one_or_none()
+
+    inserted = persist_raw_event(
+        session,
+        idempotency_key=recording_sid,
+        source="voicemail",
+        caller_number=caller,
+        received_at=datetime.now(UTC),
+        payload=form,
+        related_event_id=related_id,
+    )
+    session.commit()
+
+    if inserted and form.get("TranscriptionStatus") == "completed":
+        background.add_task(
+            extract_reply,
+            llm,
+            settings.llm_model or "unconfigured",
+            recording_sid,
+            session_factory,
+        )
+
+    logger.info("voicemail %s: %s", recording_sid, "stored" if inserted else "duplicate ignored")
     return Response(status_code=200)
 
 

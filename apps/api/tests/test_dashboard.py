@@ -100,6 +100,70 @@ def test_failed_extraction_shows_the_reply_body(session: Session) -> None:
     assert "burst pipe under the sink" in response.text
 
 
+def test_failed_voicemail_shows_the_transcript(session: Session) -> None:
+    persist_raw_event(
+        session,
+        idempotency_key="RE-dead",
+        source="voicemail",
+        caller_number=CALLER,
+        received_at=datetime.now(UTC),
+        payload={"TranscriptionText": "leaking tap under the bath"},
+    )
+    event = session.execute(
+        select(RawEvent).where(RawEvent.idempotency_key == "RE-dead")
+    ).scalar_one()
+    event.extraction_status = "dead"
+    event.extraction_attempts = 3
+    session.commit()
+
+    response = _client(session).get("/dashboard")
+
+    assert response.status_code == 200
+    assert "leaking tap under the bath" in response.text
+    assert "voicemail RE-dead" in response.text
+
+
+def _voicemail_job(session: Session, *, job_type: str | None = "wardrobe fitting") -> None:
+    persist_raw_event(
+        session,
+        idempotency_key="RE-job",
+        source="voicemail",
+        caller_number=CALLER,
+        received_at=datetime.now(UTC),
+        payload={"TranscriptionText": "need a wardrobe fitted"},
+    )
+    session.flush()
+    event_id = session.execute(select(RawEvent.id)).scalar_one()
+    persist_job_record(
+        session,
+        raw_event_id=event_id,
+        idempotency_key="RE-job",
+        caller_number=CALLER,
+        received_at=datetime.now(UTC),
+        raw_message="need a wardrobe fitted",
+        job=JobExtraction(name="Sam", job_type=job_type, location=None, urgency="high"),
+    )
+    session.commit()
+
+
+def test_voicemail_job_is_labelled_by_source(session: Session) -> None:
+    _voicemail_job(session)
+
+    response = _client(session).get("/dashboard")
+
+    assert response.status_code == 200
+    assert "(voicemail)" in response.text
+
+
+def test_missing_fields_are_flagged(session: Session) -> None:
+    _voicemail_job(session, job_type=None)
+
+    response = _client(session).get("/dashboard")
+
+    assert response.status_code == 200
+    assert "(missing)" in response.text
+
+
 def test_approve_endpoint_approves(session: Session) -> None:
     job_id = _captured_job(session)
     response = _client(session).post(f"/jobs/{job_id}/approve", follow_redirects=False)

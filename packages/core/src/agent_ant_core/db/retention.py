@@ -23,7 +23,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, not_, or_, select, update
 from sqlalchemy.orm import Session
 
-from agent_ant_core.db.extraction import FAILED
+from agent_ant_core.db.extraction import EXTRACTED_SOURCES, FAILED
 from agent_ant_core.db.models import JobRecord, LLMOutputAudit, OutboundMessage, RawEvent
 
 # Raw inbound payloads and the number inside them are retained this long, then redacted (D-027).
@@ -45,15 +45,15 @@ def redact_raw_events(
 ) -> int:
     """Blank ``raw_events.payload`` and ``caller_number`` past the retention window.
 
-    A reply that is still retryable — extraction never ran (``status`` NULL) or last failed —
-    is skipped: blanking its body would turn a recoverable lead into an empty, guaranteed
+    A reply or voicemail that is still retryable — extraction never ran (``status`` NULL) or last
+    failed — is skipped: blanking its text would turn a recoverable lead into an empty, guaranteed
     dead-letter when ``retry_failed_extractions`` next runs. Voice calls (never extracted) and
-    done/dead replies are redacted. Idempotent: rows whose number is already blank are skipped.
+    done/dead events are redacted. Idempotent: rows whose number is already blank are skipped.
     Returns the number of rows redacted. The caller commits.
     """
     cutoff = datetime.now(UTC) - older_than
     retryable = and_(
-        RawEvent.source == "sms_reply",
+        RawEvent.source.in_(EXTRACTED_SOURCES),
         or_(RawEvent.extraction_status.is_(None), RawEvent.extraction_status == FAILED),
     )
     ids = session.scalars(

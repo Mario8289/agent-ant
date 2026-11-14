@@ -68,7 +68,7 @@ def _audit(session: Session, raw_event_id: int, job_id: int) -> LLMOutputAudit:
 def test_empty_database_reports_zero_metrics(session: Session) -> None:
     metrics = compute_metrics(session)
 
-    assert metrics == Metrics(0, 0, 0, 0, 0, 0)
+    assert metrics == Metrics(0, 0, 0, 0, 0, 0, 0, 0)
     assert metrics.capture_rate == 0.0
     assert metrics.reply_rate == 0.0
     assert metrics.edit_rate == 0.0
@@ -127,6 +127,20 @@ def test_partial_capture_rate(session: Session) -> None:
     assert metrics.missed_calls == 2
     assert metrics.jobs == 1
     assert metrics.capture_rate == 0.5
+
+
+def test_jobs_break_down_by_source(session: Session) -> None:
+    sms = _raw_event(session, "SM1", "sms_reply")
+    voicemail = _raw_event(session, "RE1", "voicemail")
+    _job(session, sms.id)
+    _job(session, voicemail.id)
+    session.commit()
+
+    metrics = compute_metrics(session)
+
+    assert metrics.jobs == 2
+    assert metrics.sms_jobs == 1
+    assert metrics.voicemail_jobs == 1
 
 
 def test_edit_rate_counts_each_job_once(session: Session) -> None:

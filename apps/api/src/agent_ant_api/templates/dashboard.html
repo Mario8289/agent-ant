@@ -13,6 +13,7 @@
       <li>Capture rate: {{ metrics.jobs }} job{{ '' if metrics.jobs == 1 else 's' }} / {{ metrics.missed_calls }} missed call{{ '' if metrics.missed_calls == 1 else 's' }} ({{ (metrics.capture_rate * 100) | round }}%)</li>
       <li>Reply rate: {{ metrics.replies }} / {{ metrics.texts_sent }} texts sent ({{ (metrics.reply_rate * 100) | round }}%)</li>
       <li>Jobs booked: {{ metrics.jobs_booked }}</li>
+      <li>Jobs by source: {{ metrics.sms_jobs }} SMS / {{ metrics.voicemail_jobs }} voicemail</li>
       <li>Edit rate: {{ metrics.edited_jobs }} / {{ metrics.jobs }} jobs ({{ (metrics.edit_rate * 100) | round }}%)</li>
     </ul>
   </section>
@@ -34,11 +35,11 @@
     <section id="failed-extractions" style="border-bottom: 1px solid #c33; margin-bottom: 1.5em">
       <h2>Failed extractions ({{ failed_extractions|length }})</h2>
       <ul>
-        {% for reply in failed_extractions %}
+        {% for event in failed_extractions %}
           <li>
-            <strong>reply {{ reply.idempotency_key }}</strong> — {{ reply.extraction_status }}, attempt {{ reply.extraction_attempts }}
-            {% set body = reply.payload.get('Body', '') if reply.payload else '' %}
-            {% if body %}<br><em>{{ body }}</em>{% endif %}
+            <strong>{{ 'voicemail' if event.source == 'voicemail' else 'reply' }} {{ event.idempotency_key }}</strong> — {{ event.extraction_status }}, attempt {{ event.extraction_attempts }}
+            {% set text = (event.payload.get('TranscriptionText', '') if event.source == 'voicemail' else event.payload.get('Body', '')) if event.payload else '' %}
+            {% if text %}<br><em>{{ text }}</em>{% endif %}
           </li>
         {% endfor %}
       </ul>
@@ -50,10 +51,10 @@
   {% endif %}
   {% for job in jobs %}
     <form method="post" action="/jobs/{{ job.id }}/edit" style="margin-bottom: 1.5em">
-      <p><strong>{{ job.raw_message }}</strong></p>
+      <p><strong>{{ job.raw_message }}</strong> <em>({{ 'voicemail' if job.raw_event.source == 'voicemail' else 'SMS reply' }})</em></p>
       <label>Name <input name="name" value="{{ job.name or '' }}"></label>
-      <label>Job <input name="job_type" value="{{ job.job_type or '' }}"></label>
-      <label>Where <input name="location" value="{{ job.location or '' }}"></label>
+      <label>Job{% if not job.job_type %} <em>(missing)</em>{% endif %} <input name="job_type" value="{{ job.job_type or '' }}"></label>
+      <label>Where{% if not job.location %} <em>(missing)</em>{% endif %} <input name="location" value="{{ job.location or '' }}"></label>
       <label>When <input name="preferred_date" value="{{ job.preferred_date or '' }}"></label>
       <label>Urgency
         <select name="urgency">

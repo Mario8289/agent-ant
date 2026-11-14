@@ -6,7 +6,7 @@ approve). They never commit — the caller owns the transaction, matching ``idem
 """
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from agent_ant_core.audit.records import record_human_edit
 from agent_ant_core.db.models import JobRecord, LLMOutputAudit
@@ -20,6 +20,7 @@ def list_captured_jobs(session: Session) -> list[JobRecord]:
     return list(
         session.execute(
             select(JobRecord)
+            .options(joinedload(JobRecord.raw_event))
             .where(JobRecord.status == "captured")
             .order_by(JobRecord.received_at.asc(), JobRecord.id.asc())
         ).scalars()
