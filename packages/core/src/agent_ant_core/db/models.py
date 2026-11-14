@@ -32,7 +32,7 @@ NAMING_CONVENTION = {
     "pk": "pk_%(table_name)s",  # primary key
 }
 
-EventSource = Literal["voice_call", "sms_reply"]
+EventSource = Literal["voice_call", "sms_reply", "voicemail"]
 
 
 class Base(DeclarativeBase):
@@ -43,8 +43,9 @@ class RawEvent(Base):
     """One inbound provider event, exactly as received.
 
     ``idempotency_key`` is the provider's own identifier (``CallSid`` for a call,
-    ``MessageSid`` for an SMS). Twilio delivers at least once, so duplicates are normal; the
-    unique constraint is what makes handling them safe even when two retries arrive together.
+    ``MessageSid`` for an SMS, ``RecordingSid`` for a voicemail). Twilio delivers at least once,
+    so duplicates are normal; the unique constraint is what makes handling them safe even when
+    two retries arrive together.
 
     ``caller_number`` and ``received_at`` are trusted fields from provider metadata and the
     server clock. They are never taken from LLM output (rule 4). Twilio sends no timestamp on
@@ -53,7 +54,7 @@ class RawEvent(Base):
 
     __tablename__ = "raw_events"
     __table_args__ = (
-        CheckConstraint("source IN ('voice_call', 'sms_reply')", name="source_valid"),
+        CheckConstraint("source IN ('voice_call', 'sms_reply', 'voicemail')", name="source_valid"),
         CheckConstraint(
             "extraction_status IN ('done', 'failed', 'dead')", name="extraction_status_valid"
         ),
@@ -66,14 +67,15 @@ class RawEvent(Base):
     caller_number: Mapped[str] = mapped_column(Text)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     payload: Mapped[dict[str, str]] = mapped_column(JSONB)
-    # An SMS reply points at the missed call it answers. Null for voice calls and unmatched replies.
+    # A reply or voicemail points at the missed call it answers. Null for voice calls and
+    # unmatched events.
     related_event_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("raw_events.id"), nullable=True
     )
-    # Extraction bookkeeping (#34): how many times extraction has run over this reply and what the
+    # Extraction bookkeeping (#34): how many times extraction has run over this event and what the
     # last outcome was. 0 / null for voice calls, which are never extracted. Lives on the raw event
-    # because the raw event is the replay source: a reply whose extraction failed or never ran is
-    # recovered by reprocessing it, not by looking up a separate queue.
+    # because the raw event is the replay source: a reply or voicemail whose extraction failed or
+    # never ran is recovered by reprocessing it, not by looking up a separate queue.
     extraction_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     extraction_status: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

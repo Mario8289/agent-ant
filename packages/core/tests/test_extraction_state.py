@@ -60,6 +60,23 @@ def test_candidates_skip_voice_calls(session: Session) -> None:
     assert candidate_replies(session) == []
 
 
+def test_candidates_include_voicemail_transcripts(session: Session) -> None:
+    session.add(
+        RawEvent(
+            idempotency_key="RE1",
+            source="voicemail",
+            caller_number=NUMBER,
+            received_at=datetime.now(UTC),
+            payload={"TranscriptionText": "fix a tap"},
+        )
+    )
+    session.commit()
+
+    candidates = candidate_replies(session)
+
+    assert [r.idempotency_key for r in candidates] == ["RE1"]
+
+
 def test_failure_panel_lists_failed_and_dead_replies(session: Session) -> None:
     failed = _reply(session, "SM1", status=FAILED, attempts=1)
     dead = _reply(session, "SM2", status=DEAD, attempts=3)

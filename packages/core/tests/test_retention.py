@@ -12,6 +12,14 @@ OTHER = "+447111111111"
 OLD = datetime.now(UTC) - timedelta(days=91)
 
 
+def _payload(source: str, number: str) -> dict[str, str]:
+    if source == "voice_call":
+        return {"From": number}
+    if source == "voicemail":
+        return {"TranscriptionText": "fix a tap"}
+    return {"Body": "fix a tap"}
+
+
 def _event(
     session: Session,
     key: str,
@@ -26,7 +34,7 @@ def _event(
         source=source,
         caller_number=number,
         received_at=datetime.now(UTC),
-        payload={"From": number} if source == "voice_call" else {"Body": "fix a tap"},
+        payload=_payload(source, number),
         extraction_status=status,
     )
     if created_at is not None:
@@ -81,6 +89,21 @@ def test_redact_raw_events_is_idempotent(session: Session) -> None:
     assert redact_raw_events(session) == 1
     session.commit()
     assert redact_raw_events(session) == 0  # already blank
+
+
+def test_redact_raw_events_protects_retryable_voicemail(session: Session) -> None:
+    old_never = _event(session, "RE1", source="voicemail", created_at=OLD)  # retryable
+    old_done = _event(session, "RE2", source="voicemail", status="done", created_at=OLD)
+    session.commit()
+
+    redacted = redact_raw_events(session)
+    session.commit()
+
+    assert redacted == 1  # only the done voicemail; the never-run one is still recoverable
+    session.refresh(old_never)
+    session.refresh(old_done)
+    assert old_never.payload != {}
+    assert old_done.payload == {}
 
 
 def test_redact_llm_outputs_redacts_old_only(session: Session) -> None:

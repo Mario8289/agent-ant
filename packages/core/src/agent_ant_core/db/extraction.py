@@ -9,6 +9,9 @@ path (D-023).
 
 Statuses: ``NULL`` = never attempted, ``done`` = a job was captured, ``failed`` = the last
 attempt did not produce a job, ``dead`` = retries exhausted, needs a human.
+
+A "reply" here is any extracted inbound event — an SMS reply or a voicemail transcript (issue
+#33). Both run the same extraction pipeline, so both are retryable and dead-letterable.
 """
 
 from sqlalchemy import or_, select
@@ -23,21 +26,24 @@ DONE = "done"
 FAILED = "failed"
 DEAD = "dead"
 
+# Sources that carry text we extract a job from. Voice calls are recorded but never extracted.
+EXTRACTED_SOURCES = ("sms_reply", "voicemail")
+
 
 def candidate_replies(
     session: Session, *, max_attempts: int = MAX_EXTRACTION_ATTEMPTS
 ) -> list[RawEvent]:
-    """Replies that still need an extraction attempt: never done, under the attempt bound.
+    """Events that still need an extraction attempt: never done, under the attempt bound.
 
     Includes replies whose extraction never ran (a crash between the webhook commit and the
-    background task, or a reply stored while ``llm`` was unset) as well as ``failed`` ones. The
+    background task, or an event stored while ``llm`` was unset) as well as ``failed`` ones. The
     idempotent ``persist_job_record`` keeps a concurrent retry from creating a second job.
     """
     return list(
         session.execute(
             select(RawEvent)
             .where(
-                RawEvent.source == "sms_reply",
+                RawEvent.source.in_(EXTRACTED_SOURCES),
                 or_(
                     RawEvent.extraction_status.is_(None),
                     RawEvent.extraction_status == FAILED,
@@ -50,12 +56,12 @@ def candidate_replies(
 
 
 def list_failed_extractions(session: Session, *, limit: int = 20) -> list[RawEvent]:
-    """Replies whose extraction failed or is dead-lettered, newest first, for the dashboard."""
+    """Events whose extraction failed or is dead-lettered, newest first, for the dashboard."""
     return list(
         session.execute(
             select(RawEvent)
             .where(
-                RawEvent.source == "sms_reply",
+                RawEvent.source.in_(EXTRACTED_SOURCES),
                 RawEvent.extraction_status.in_((FAILED, DEAD)),
             )
             .order_by(RawEvent.received_at.desc(), RawEvent.id.desc())

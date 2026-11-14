@@ -1,8 +1,8 @@
 ---
 title: Architecture & Schema
 status: draft
-version: 0.5
-last_updated: 2026-11-13
+version: 0.6
+last_updated: 2026-11-14
 sources:
   - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
   - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
@@ -28,12 +28,15 @@ flowchart TD
     D --> E[Twilio webhook<br/>POST application/x-www-form-urlencoded]
     E --> F[FastAPI /webhooks/missed-call<br/>verify Twilio signature]
     F --> G[Persist raw event immediately<br/>idempotency_key = CallSid]
-    G --> H[Return 200 + TwiML quickly]
+    G --> H[Return 200 + TwiML<br/>prompt + Record (transcribe)]
     G --> I[Background task]
     I --> J[Send fixed-template SMS to caller<br/>no LLM-generated text]
     J --> K[Caller replies by SMS]
     K --> L[FastAPI /webhooks/sms-reply<br/>persist raw, idempotency_key = MessageSid]
     L --> M[Background task: LLM extraction<br/>structured output + Pydantic validation]
+    H --> V[Caller leaves a voicemail<br/>Twilio records + transcribes async]
+    V --> W[FastAPI /webhooks/voicemail-transcription<br/>persist raw, idempotency_key = RecordingSid]
+    W --> M
     M -->|invalid| N[Retry / repair, then flag for human]
     M -->|valid| O[(Postgres: job_records<br/>status = captured)]
     O --> P[Dashboard: Dad approves / edits / rejects<br/>HITL]
@@ -174,6 +177,8 @@ model is in place before the flow grows.
 
 ## Change history
 
+- **0.6 (2026-11-14)** — Added the voicemail-to-text capture path (D-029): the missed-call TwiML
+  now prompts for a message and Twilio transcribes it into the same extraction pipeline.
 - **0.5 (2026-11-13)** — R4 marked mitigated: Bedrock locked as the DPA-backed provider (D-018).
 - **0.4 (2026-11-05)** — LangGraph accepted (D-008) and orchestration section rewritten; G0c
   item 5 active again; R4 reframed as deferred to the Week 4 DPA lock (D-009); open questions
