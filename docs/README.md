@@ -57,6 +57,7 @@ supports one of those three.
 | `discovery/` | [Hypotheses](./discovery/hypotheses.md) | Falsifiable assumptions with pass lines committed in advance | draft |
 | | [Interview script](./discovery/interview-script.md) | Mom Test discovery interview, no pitching ([printable](./discovery/print/interview-script.pdf)) | draft |
 | | [Findings](./discovery/findings.md) | What each interview found, and patterns across them | draft |
+| | [Recruiting](./discovery/recruiting.md) | Who to interview next, where to find them, what to say | draft |
 | `design/` | [Design doc](./design/design-doc.md) | How it's built: design, data model, interfaces, alternatives, NFRs, risks, rollout, testing | draft |
 | | [C4 diagrams](./design/c4.md) | Context, containers, components | draft |
 | | [Request flows](./design/request-flows.md) | Sequence diagrams for each webhook, with code anchors | draft |
