@@ -1,7 +1,7 @@
 ---
 title: Requirements Capture — Master Sheet
 status: draft
-version: 0.3
+version: 0.4
 last_updated: 2026-11-17
 sources:
   - Fitzpatrick — The Mom Test (2013) — patterns, commitment currencies — verified
@@ -35,6 +35,8 @@ Feeds **H1**, **H3**, **H7**, **H9** and gate **G0a** in
 |---|---|---|---|---|---|---|---|
 | Work mix: private vs subcontract | Segment | Mostly subcontract via kitchen companies; private jobs are "extra" | | | | | |
 | Top 3 admin pains (their words, unprompted) | H1, H9 | 1. Year-end accounts and getting paperwork up to date. Missed calls not named | | | | | |
+| Admin hours last week: total / evenings and weekends (Q6a, Q6b) | H10 | Not asked (script v0.3) | | | | | |
+| Section order used (from their top 3) | — | Fixed order (script v0.3) | | | | | |
 | Missed calls / week (actual) | H1 | Every day (no count given) | | | | | |
 | Last missed call — what happened | H1 | No specific call recalled. Checks voicemail same day if he recognises the caller; many are suppliers or the kitchen companies | | | | | |
 | Jobs lost that way (recent) | H1 | None named. Says he does not return private enquiries and is not losing anything | | | | | |
@@ -68,6 +70,7 @@ Feeds **H1**, **H3**, **H7**, **H9** and gate **G0a** in
 | Gave real commitment (not politeness) | /6 | — | |
 | Made an actual introduction (H7) | /6 | ≥2 | |
 | **Receipts / year-end named unprompted as top-3 pain, with a specific recent instance (H9)** | /5 | **≥3 of interviews 2–6** | |
+| **A specific recent week with ≥5 hours of admin in evenings or weekends (H10)** | /5 | **≥3 of interviews 2–6** | |
 
 ## Decision checkpoint
 
@@ -149,6 +152,8 @@ auto-text question as past behaviour (#142).
 
 ## Change history
 
+- **0.4 (2026-11-17)** — rows added for admin hours last week (H10, script v0.4 Q6a/6b) and
+  the section order used; H10 pattern row added.
 - **0.3 (2026-11-17)** — interview 1 (Dad) recorded. Rows added for work mix, unprompted top
   pains, auto-text reaction, receipts, lost receipts and year-end prep (H9). Pattern rows
   added for segment and H9. Interview notes section added.

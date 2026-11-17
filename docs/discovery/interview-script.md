@@ -1,7 +1,7 @@
 ---
 title: Mom Test Interview Script — Sole Traders
 status: draft
-version: 0.3
+version: 0.4
 last_updated: 2026-11-17
 sources:
   - Fitzpatrick — The Mom Test (2013) — verified
@@ -12,8 +12,10 @@ sources:
 ## Purpose
 
 Learn how a tradesperson **actually** runs the business side of the work — calls, quotes,
-invoices, receipts and year-end paperwork — without revealing the product idea. Feeds **H1**,
-**H3**, **H7** and **H9** in [hypothesis table](./hypotheses.md). Record each
+invoices, receipts and year-end paperwork — and how much of their own time it takes, without
+revealing the product idea. The aim is to find **which** back-office task hurts most, not to
+confirm one we already picked. Feeds **H1**, **H3**, **H7**, **H9** and **H10** in the
+[hypothesis table](./hypotheses.md). Record each
 interview in [discovery findings](./findings.md).
 
 **Printable copy:** [print/interview-script.html](./print/interview-script.html) (and the PDF
@@ -36,6 +38,8 @@ next to it). Regenerate the PDF with `just print-script` after editing either fi
 - **Wait 3 seconds** after each answer. The useful detail often comes after the pause.
 - **Chase specifics.** "Yeah, I miss calls sometimes" → "When was the last time? What happened?"
 - **Do not pitch, defend, or suggest.** If they complain, say "tell me more", not "I could fix that".
+- **Don't lead with a task.** No section is the "main" one. Their top 3 (Section 1) sets the
+  order and where the time goes.
 - **Pick a quiet room.** Background conversation made parts of interview 1 hard to transcribe.
 
 > ⚠️ **Anti-pattern (Fitzpatrick): pitching during discovery.** It contaminates every answer
@@ -45,8 +49,8 @@ next to it). Regenerate the PDF with `just print-script` after editing either fi
 ## Opening (no pitch)
 
 > "I'm trying to get my head round how people in the trade actually run the business side of
-> things — the calls, the quotes, the invoices, the paperwork. Not the work itself. Can I ask
-> you a few things about how it really works for you? No agenda, I'm just curious."
+> things — everything that isn't the work itself. Can I ask you a few things about how it
+> really works for you? No agenda, I'm just curious."
 
 Then stop talking.
 
@@ -61,17 +65,25 @@ them cannot.
 2. Where did your last three jobs come from?
 3. How long have you been trading on your own? Anyone helping with the books?
 
-## Section 1 — The admin, unprompted (H1, H9)
+## Section 1 — The admin, unprompted (H1, H9, H10)
 
 Ask this **before** any topic-specific section so the answer is not led.
 
 4. What's the most boring or frustrating part of the business side for you?
 5. What else? *(get three, in their words)*
 6. When did you last spend time on that? What were you doing?
+   - **6a.** Think about last week. Roughly how many hours went on the business side,
+     everything that wasn't the work itself? *(get a number for that week, not "usually")*
+   - **6b.** When did those hours happen: in the working day, evenings, weekends? *(H10
+     counts only evenings and weekends; get the split)*
 
-## Section A — The missed call (H1, G0b)
+**Then set the order.** Take the sections that match their top 3 first, in their order, and
+spend most of the time there. Cover the rest briefly, but ask every numbered question, so
+interviews can be compared. Note the order you used on the capture sheet.
 
-7. Walk me through what happens when the phone rings while you're up a ladder or mid-job.
+## Section A — Phone calls (H1, G0b)
+
+7. How do calls from customers reach you during the day, and what happens to them?
 8. When was the last time you missed a call from a customer? What happened next?
 9. What did you do — ring back, text, nothing?
 10. Did that one turn into a job, or did you lose it?
@@ -126,7 +138,7 @@ Real signal is commitment in one of three currencies: **time, reputation, cash**
 
 | Currency | Ask | Strength |
 |---|---|---|
-| Time | "Could I sit with you next time you total up a job and watch how you do it?" | weakest |
+| Time | "Could I sit with you next time you [their top pain, e.g. do a quote, total up a job] and watch how you do it?" | weakest |
 | Reputation | "Know one or two others in the trade I could have the same chat with? Could you intro me?" | medium |
 | Cash | Only once something exists: a small deposit or pre-order. Never a hypothetical price. | strongest |
 
@@ -150,7 +162,8 @@ of git.
 
 ## Judging the result
 
-- **Strong:** specific past events, names a lost job or a lost receipt, gives time or an intro.
+- **Strong:** specific past events, names a lost job or a lost receipt, gives a real number of
+  hours for a specific week, gives time or an intro.
 - **Weak:** "yeah it happens", no examples, polite encouragement.
 - **Gate G0a:** if fewer than 3 of 6 recall a **specific** missed call **and** a lost job,
   do not build the missed-call wedge.
@@ -171,6 +184,13 @@ He will want to be encouraging. Manage that bias actively:
 
 ## Change history
 
+- **0.4 (2026-11-17)** — Made neutral across tasks, so interviews 2–6 can find which
+  back-office pain is worst. Removed the "up a ladder" scenario; Section A now asks about phone
+  calls the way the other sections ask about theirs, and is no longer the default first
+  section. Added 6a/6b (admin hours last week and when they happened) for **H10**. Sections
+  now follow the interviewee's top 3. The opening and the time-commitment ask no longer name a
+  task. Question numbers and section letters are unchanged, so Q13 and "Section D" references
+  still hold, and Section 1 still comes before Section D, as H9's frozen test requires.
 - **0.3 (2026-11-17)** — generalised from Dad to all six interviewees (file renamed from
   `02-mom-test-script-dad.md`). Added Section 0 (private vs subcontract work), an unprompted
   admin-pain section, Section D on receipts and year-end paperwork (H9), and a behavioural
