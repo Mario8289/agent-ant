@@ -1,8 +1,8 @@
 ---
 title: Architecture & Schema
 status: draft
-version: 0.6
-last_updated: 2026-11-14
+version: 0.7
+last_updated: 2026-11-17
 sources:
   - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
   - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
@@ -28,7 +28,7 @@ flowchart TD
     D --> E[Twilio webhook<br/>POST application/x-www-form-urlencoded]
     E --> F[FastAPI /webhooks/missed-call<br/>verify Twilio signature]
     F --> G[Persist raw event immediately<br/>idempotency_key = CallSid]
-    G --> H[Return 200 + TwiML<br/>prompt + Record (transcribe)]
+    G --> H["Return 200 + TwiML<br/>prompt + Record (transcribe)"]
     G --> I[Background task]
     I --> J[Send fixed-template SMS to caller<br/>no LLM-generated text]
     J --> K[Caller replies by SMS]
@@ -50,6 +50,90 @@ crashed handler loses the job unless the raw event is already stored.
 
 Request-level flows (what happens per HTTP request, step by step, with code anchors):
 [11-request-flows.md](./11-request-flows.md).
+
+## Components
+
+What we run and what we call. The diagram above is the process; this is the parts. Solid boxes
+are built. Dashed boxes are planned under the lifecycle epic
+([#121](https://github.com/Mario8289/agent-ant/issues/121)) and not built yet. Agents beyond
+`missed_call` are one box on purpose: the roadmap ([doc 12](./12-agent-roadmap.md)) is a
+candidate list behind the gates (D-031), not committed architecture.
+
+```mermaid
+flowchart LR
+    subgraph EXT[External services]
+        CALLER([Caller / customer])
+        DAD([Dad: phone + browser])
+        TW[Twilio<br/>voice forwarding, SMS,<br/>voicemail transcription<br/>D-011, D-029]
+        SLACK[Slack incoming webhook<br/>operator alerts · D-026]
+    end
+
+    subgraph AWS[AWS eu-west-2]
+        subgraph AR[App Runner · D-020]
+            subgraph API[apps/api: one FastAPI service · D-005]
+                WH[Webhooks<br/>missed-call, sms-reply,<br/>voicemail, sms-status]
+                DASH[Dashboard<br/>approve / edit / reject · D-014]
+                BG[Background tasks]
+            end
+            subgraph AG[agents/]
+                MC[missed_call<br/>LangGraph · D-008]
+                FUT[Future agents<br/>roadmap, gated · D-031]
+            end
+            subgraph CORE[packages/core]
+                CDB[db, audit, llm,<br/>telemetry]
+                TRN[transition + actor registry<br/>#124]
+            end
+        end
+        subgraph OPS[Ops scheduler · D-028]
+            EB[EventBridge Scheduler]
+            FG[ECS Fargate one-off tasks<br/>retry-sms, retry-extractions, purge]
+            RUN[run-due-actions<br/>#126]
+        end
+        BR[Bedrock<br/>eu.anthropic.claude-sonnet-4-6<br/>D-015, D-018]
+        SM[Secrets Manager]
+        ECR[ECR: one container image]
+    end
+
+    subgraph DATA[Postgres on Supabase · D-005]
+        T1[(raw_events, job_records,<br/>llm_output_audits, human_edits,<br/>outbound_messages, opt-outs)]
+        T2[(customers, job_events,<br/>scheduled_actions<br/>#123, #124, #126)]
+    end
+
+    CALLER -- missed call / SMS --> TW
+    TW -- signed webhooks --> WH
+    BG -- fixed-template SMS · D-004 --> TW
+    TW -- SMS --> CALLER
+    DAD -- forwards unanswered calls --> TW
+    DAD -- reviews jobs --> DASH
+    WH --> BG --> MC
+    MC -- extraction --> BR
+    API --> CDB --> T1
+    TRN -.-> T2
+    FUT -.-> TRN
+    MC -.-> TRN
+    DASH -.-> TRN
+    EB --> FG --> T1
+    EB -.-> RUN -.-> T2
+    FG -- dead letters --> SLACK
+    API -- alerts --> SLACK
+    SM --> AR
+    SM --> FG
+    ECR --> AR
+    ECR --> FG
+
+    classDef planned stroke-dasharray: 5 5,fill:none
+    class TRN,RUN,T2,FUT planned
+```
+
+**Reading it:**
+
+- **One image, two runtimes.** The same container runs the API on App Runner and the scheduled
+  scripts on Fargate, because App Runner has no cron (D-028).
+- **Only `transition()` will write job state** once #124 lands. Today the dashboard and
+  `missed_call` write `job_records` directly through `core/db`.
+- **Nothing customer-facing leaves without a fixed template** (D-004). LLM output goes to Bedrock
+  and back to Dad, never to Twilio as free text.
+- Update this diagram when a component is added, removed or moved from planned to built.
 
 ## Schema
 
@@ -177,6 +261,9 @@ model is in place before the flow grows.
 
 ## Change history
 
+- **0.7 (2026-11-17)** — Added a component diagram: built services solid, the lifecycle work
+  from #121 dashed, future agents as one gated box. Quoted the TwiML label in the process
+  diagram so Mermaid renders it.
 - **0.6 (2026-11-14)** — Added the voicemail-to-text capture path (D-029): the missed-call TwiML
   now prompts for a message and Twilio transcribes it into the same extraction pipeline.
 - **0.5 (2026-11-13)** — R4 marked mitigated: Bedrock locked as the DPA-backed provider (D-018).
