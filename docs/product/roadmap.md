@@ -1,8 +1,8 @@
 ---
 title: Agent Roadmap
 status: draft
-version: 0.2
-last_updated: 2026-11-14
+version: 0.3
+last_updated: 2026-11-17
 sources:
   - Thiel — Zero to One (2014) — 10x on one axis, escape competition — verified (the business plan)
   - Ries — The Lean Startup (2011) — validated learning, commit pass lines first — verified (the business plan)
@@ -129,6 +129,30 @@ The quote drafter is also blocked by the 10x-axis decision
 
 A failed G0a still means stop. In that case these epics are closed as Won't Do, not started.
 
+### WhatsApp is a channel, not an agent
+
+WhatsApp (and any later chat channel) is planned as a **channel** that every agent can use, not
+as an agent of its own. Agents 1–4 all send the customer something: a quote, a nudge, a slot
+offer, a reminder. Each would be more useful over WhatsApp, which callers open more readily
+than SMS.
+
+- **Inbound** follows the voicemail precedent (D-029): one more webhook route and one more
+  `raw_events.source` value, feeding the same persist → dedupe → extract → review pipeline.
+- **Outbound** goes through one channel-aware send function instead of each agent calling SMS
+  directly. Today `sms.py` hardcodes SMS; that seam moves when the first agent that needs it
+  is built.
+- **Provider:** Twilio's WhatsApp senders, not a new vendor. Twilio already carries the same
+  webhook shape, signature checks and idempotency keys.
+- **D-004 still holds.** Replies are fixed templates and structured choices (buttons, "reply 1,
+  2 or 3"). A conversational bot where the model writes to customers, such as an ElevenLabs
+  agent, needs its own decision and belongs with agent 12, not here.
+- **WhatsApp constraints to plan for:** Meta business verification; the first message to a
+  caller must be a pre-approved template; free-form messages are allowed only within 24 hours
+  of the customer's last message; opt-in; per-conversation pricing.
+
+Whether customers and messages carry a channel is an open question on the lifecycle ADR
+([#122](https://github.com/Mario8289/agent-ant/issues/122)). No code changes until then.
+
 ## 6. Rules every new agent inherits
 
 The non-negotiable rules in `AGENTS.md` apply unchanged. Three matter most here:
@@ -215,6 +239,8 @@ It also found four gaps for the ADR (#122) to settle:
 - **Which agent does Dad ask for, unprompted (H4)?** Owner: founder, Week 6 write-up. Can
   reorder §3.
 - **Role names.** Owner: founder.
+- **Do customers and messages carry a channel (SMS, WhatsApp)?** Proposed: yes, with outbound
+  sends going through one channel-aware function. Owner: founder, in the lifecycle ADR (#122).
 
 ## Sources
 
@@ -232,6 +258,8 @@ unverified.
 
 ## Change history
 
+- **0.3 (2026-11-17)** — §5: WhatsApp is planned as a channel shared by agents 1–4, not an
+  agent; D-004 still applies; channel modelling raised as an open question on #122.
 - **0.2 (2026-11-14)** — added §7: how each agent fits the shared lifecycle (#121), and
   four gaps (G1–G4) for the lifecycle ADR (#122).
 - **0.1 (2026-11-14)** — created: competitor coverage, 12 ranked agents, role grouping, the
