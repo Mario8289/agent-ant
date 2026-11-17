@@ -19,7 +19,7 @@ Tracked in [epic #3](https://github.com/Mario8289/agent-ant/issues/3) (initial d
 |---|---|---|---|
 | 00 | [Business Plan](./00-business-plan.md) | Thesis, competitors, MVP scope, 6-week sprint, gates | draft |
 | 01 | [Hypothesis Table](./01-hypothesis-table.md) | Falsifiable assumptions with committed pass lines | draft |
-| 02 | [Mom Test Script — Dad](./02-mom-test-script-dad.md) | Discovery interview script, no pitching | draft |
+| 02 | [Mom Test Script](./02-mom-test-script.md) | Discovery interview script, no pitching | draft |
 | 03 | [Requirements Capture Sheet](./03-requirements-capture-sheet.md) | Cross-interview pattern tracking | draft |
 | 04 | [Grants Timeline](./04-grants-timeline.md) | When to apply for credits vs. cash grants | draft |
 

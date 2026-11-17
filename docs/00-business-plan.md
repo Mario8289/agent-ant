@@ -84,7 +84,7 @@ carpentry-specific quoting using SKU/margin data; regional trust density.
 
 ## 4. Discovery
 
-Script: [02-mom-test-script-dad.md](./02-mom-test-script-dad.md).
+Script: [02-mom-test-script.md](./02-mom-test-script.md).
 Capture: [03-requirements-capture-sheet.md](./03-requirements-capture-sheet.md).
 
 Per **Fitzpatrick**, three rules: talk about their life not your idea; ask about specifics

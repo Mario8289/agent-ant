@@ -20,7 +20,7 @@ Time budget: about 14 hours a week, roughly 2 hours a day ([00 §7](./00-busines
 
 | Order | Issue | Who | Task | Done when |
 |---|---|---|---|---|
-| 1 | [#10](https://github.com/Mario8289/agent-ant/issues/10) | You | Six Mom Test interviews using [02](./02-mom-test-script-dad.md). Record in [03](./03-requirements-capture-sheet.md) | At least 6 interviews logged, names and numbers kept out of the repo |
+| 1 | [#10](https://github.com/Mario8289/agent-ant/issues/10) | You | Six Mom Test interviews using [02](./02-mom-test-script.md). Record in [03](./03-requirements-capture-sheet.md) | At least 6 interviews logged, names and numbers kept out of the repo |
 | 2 | [#15](https://github.com/Mario8289/agent-ant/issues/15) | You | Choose the beachhead segment (H5) | Decision recorded in [06](./06-decision-log.md) |
 | 3 | [#12](https://github.com/Mario8289/agent-ant/issues/12) | Me, in `spikes/` | Five precursor spikes, one per learning-track row 1–5 (see below) | Each spike's "done when" test passes |
 | 4 | [#47](https://github.com/Mario8289/agent-ant/issues/47) | Parked | Forwarding on Dad's real plan | Not started. Needed before any real customer call |
