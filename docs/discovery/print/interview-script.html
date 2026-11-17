@@ -1,0 +1,197 @@
+<!doctype html>
+<!--
+  Printable copy of docs/discovery/interview-script.md (v0.3). Keep the two in step.
+  Regenerate the PDF with `just print-script`.
+-->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interview Script</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  :root { --ink: #1a1a1a; --muted: #5a5a5a; --rule: #c9c9c9; --tint: #f3f1ec; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 182mm; padding: 16px;
+    font: 10.5pt/1.4 "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: #fff;
+  }
+  @media print { body { padding: 0; } }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 10px; }
+  h1 { font-size: 17pt; margin: 0; }
+  .meta { color: var(--muted); font-size: 9pt; text-align: right; }
+  .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; margin-bottom: 10px; }
+  .fields div { border-bottom: 1px solid var(--rule); padding-top: 10px; font-size: 9pt; color: var(--muted); }
+  .rules { background: var(--tint); padding: 8px 12px; margin-bottom: 10px; font-size: 9.5pt; }
+  .rules ul { margin: 4px 0 0; padding-left: 18px; }
+  .rules p { margin: 0; }
+  blockquote { margin: 6px 0 10px; padding: 6px 12px; border-left: 3px solid var(--ink); font-style: italic; }
+  section { break-inside: avoid; margin-bottom: 8px; }
+  h2 { font-size: 11.5pt; margin: 10px 0 2px; border-bottom: 1px solid var(--ink); padding-bottom: 1px; }
+  h2 small { font-weight: normal; color: var(--muted); font-size: 8.5pt; }
+  .why { color: var(--muted); font-size: 9pt; margin: 2px 0 4px; }
+  ol { margin: 0; padding-left: 22px; }
+  ol li { margin: 3px 0 0; }
+  ol li::after { content: ""; display: block; height: 15px; border-bottom: 1px dotted var(--rule); }
+  .hint { color: var(--muted); font-size: 9pt; }
+  .listen { font-size: 9pt; margin: 4px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 4px; }
+  th, td { border: 1px solid var(--rule); padding: 4px 6px; text-align: left; vertical-align: top; }
+  th { background: var(--tint); }
+  td.box { width: 22mm; }
+  .page-break { break-before: page; }
+  .capture td:first-child { width: 48%; }
+  .capture td:last-child { height: 36px; }
+  footer { margin-top: 10px; color: var(--muted); font-size: 8.5pt; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Interview script</h1>
+  <div class="meta">Mom Test · 30–40 min · v0.3 (2026-11-17)</div>
+</header>
+
+<div class="fields">
+  <div>Interview #</div><div>Date</div><div>Trade</div>
+</div>
+
+<div class="rules">
+  <p><strong>Their life, not your idea. Past specifics, not opinions. Talk ~20% of the time.</strong></p>
+  <ul>
+    <li><strong>Never mention the app</strong> — not even at the end. <strong>Never mention a price.</strong></li>
+    <li>Wait 3 seconds after each answer. Chase specifics: “When was the last time? What happened?”</li>
+    <li>If they complain: “tell me more”, never “I could fix that”. Quiet room, no background talk.</li>
+    <li><strong>Never ask:</strong> “Is this a good idea?” · “Would you use an app that…?” · “How much would you pay?” · “What would your dream app do?” · “Don't you find it annoying when…?”</li>
+  </ul>
+</div>
+
+<blockquote>“I'm trying to get my head round how people in the trade actually run the business
+side of things — the calls, the quotes, the invoices, the paperwork. Not the work itself. Can I
+ask you a few things about how it really works for you? No agenda, I'm just curious.”</blockquote>
+
+<section>
+  <h2>0 · Who they are <small>segment</small></h2>
+  <ol>
+    <li>Roughly how much of your work comes from private customers, and how much through a company or main contractor?</li>
+    <li>Where did your last three jobs come from?</li>
+    <li>How long have you been trading on your own? Anyone helping with the books?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>1 · The admin, unprompted <small>H1, H9 — ask before anything specific</small></h2>
+  <ol start="4">
+    <li>What's the most boring or frustrating part of the business side for you?</li>
+    <li>What else? <span class="hint">(get three, in their words)</span></li>
+    <li>When did you last spend time on that? What were you doing?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>A · The missed call <small>H1, G0b</small></h2>
+  <ol start="7">
+    <li>Walk me through what happens when the phone rings while you're up a ladder or mid-job.</li>
+    <li>When was the last time you missed a call from a customer? What happened next?</li>
+    <li>What did you do — ring back, text, nothing?</li>
+    <li>Did that one turn into a job, or did you lose it?</li>
+    <li>How often in a normal week? <span class="hint">(then: what happened last week specifically?)</span></li>
+    <li>When you lose a job that way, what does it cost you, roughly?</li>
+    <li>Last time you rang a tradesperson and got a text back instead of an answer, what did you do?</li>
+  </ol>
+  <p class="listen"><strong>Listen for:</strong> a real call, a real lost job, a number. “I don't ring them back” → ask why, and whether that work matters.</p>
+</section>
+
+<section>
+  <h2>B · Enquiries and quotes</h2>
+  <ol start="14">
+    <li>Talk me through a new customer from first contact to starting the job.</li>
+    <li>How do you do quotes now — pen and paper, phone, computer?</li>
+    <li>Where do you get material prices when pricing a job?</li>
+    <li>How long did your last quote take, start to finish? When did you do it?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>C · Invoices and getting paid <small>H4</small></h2>
+  <ol start="18">
+    <li>How do you do invoices — who, how, when?</li>
+    <li>When was the last time someone was late paying? What did you do?</li>
+    <li>How much are you owed right now?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>D · Receipts, job costs and year-end <small>H9</small></h2>
+  <ol start="21">
+    <li>Where do the receipts for a job go while it's running?</li>
+    <li>Walk me through the last job you totalled up. How long did it take?</li>
+    <li>When did you last lose a receipt? What happened?</li>
+    <li>Supplier invoices that come by email — what happens to them?</li>
+    <li>Walk me through getting your year-end paperwork ready. How long did it take last year?</li>
+    <li>Who does your accounts? What do you hand them, and what do you still do yourself?</li>
+    <li>What does that cost you?</li>
+  </ol>
+  <p class="listen"><strong>Listen for:</strong> hours, lost receipts, evenings and weekends. Ask to <strong>see</strong> a real job's paperwork.</p>
+</section>
+
+<section>
+  <h2>E · What they have already tried</h2>
+  <ol start="28">
+    <li>Have you ever tried any software or an app for any of this?</li>
+    <li>What happened — stuck with it or binned it? Why?</li>
+    <li>What do you use your phone for, business-wise, day to day?</li>
+    <li>Who else in the trade has this sorted? What do they do?</li>
+  </ol>
+</section>
+
+<section>
+  <h2>F · Commitment ask <small>H3, H7 — pick one, tick what they actually did</small></h2>
+  <table>
+    <tr><th>Currency</th><th>Ask</th><th>Given?</th></tr>
+    <tr><td>Time</td><td>“Could I sit with you next time you total up a job and watch how you do it?”</td><td class="box"></td></tr>
+    <tr><td>Reputation</td><td>“Know one or two others in the trade I could have the same chat with? Could you intro me?”</td><td class="box"></td></tr>
+    <tr><td>Cash</td><td>Only once something exists: a deposit or pre-order. Never a hypothetical price.</td><td class="box"></td></tr>
+  </table>
+  <p class="listen">“Sounds good, let me know” = politeness. A booked time, a made intro or a deposit = signal.</p>
+</section>
+
+
+<div class="page-break"></div>
+
+<header>
+  <h1>Capture sheet</h1>
+  <div class="meta">Fill within an hour · copy into the discovery findings · no names or numbers</div>
+</header>
+
+<table class="capture">
+  <tr><th>Field</th><th>Notes</th></tr>
+  <tr><td>Work mix: private vs subcontract (%)</td><td></td></tr>
+  <tr><td>Top 3 admin pains, unprompted (their words)</td><td></td></tr>
+  <tr><td>Missed calls / week (actual)</td><td></td></tr>
+  <tr><td>Last missed call — what happened</td><td></td></tr>
+  <tr><td>Jobs lost that way (recent) and value</td><td></td></tr>
+  <tr><td>Reaction to getting a text back (Q13)</td><td></td></tr>
+  <tr><td>Quote process and time taken</td><td></td></tr>
+  <tr><td>Invoice process / last late payment</td><td></td></tr>
+  <tr><td>Receipt handling per job</td><td></td></tr>
+  <tr><td>Last lost receipt — what happened</td><td></td></tr>
+  <tr><td>Year-end prep: hours, who does what, cost</td><td></td></tr>
+  <tr><td>Tools / apps tried — stuck or binned?</td><td></td></tr>
+  <tr><td>Commitment given (time / reputation / cash / none)</td><td></td></tr>
+  <tr><td>Introductions actually made</td><td></td></tr>
+  <tr><td>Verbatim quotes (2–3)</td><td style="height:80px"></td></tr>
+</table>
+
+<table style="margin-top:10px">
+  <tr><th>Gate check</th><th>Yes / No</th></tr>
+  <tr><td>Recalled a <strong>specific</strong> missed call <strong>and</strong> a lost job (G0a)</td><td class="box"></td></tr>
+  <tr><td>Named receipts or year-end paperwork as a top-3 pain <strong>unprompted</strong> and gave a specific recent instance (H9)</td><td class="box"></td></tr>
+  <tr><td>Did I mention the app or a price? <span class="hint">(if yes, note the timestamp — later answers don't count)</span></td><td class="box"></td></tr>
+</table>
+
+<footer>Source: docs/discovery/interview-script.md · Fitzpatrick, <em>The Mom Test</em> (2013)</footer>
+
+</body>
+</html>

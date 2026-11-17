@@ -18,7 +18,7 @@ It is not what the wedge needs.
 
 **Call forwarding (conditional, no answer)**
 Calls go to another number only when the phone is not answered after a set time. This is what
-G0b tests. See [08](./08-telephony-forwarding-test.md).
+G0b tests. See [forwarding test runbook](./runbooks/telephony-forwarding-test.md).
 
 **GSM codes (MMI codes)**
 Dial codes such as `**61*number#` that set call forwarding on the phone's network. They work
@@ -79,7 +79,7 @@ tradesperson to approve.
 **Idempotency**
 Doing the same thing twice has the same effect as doing it once. Twilio can resend a webhook,
 so the app stores each provider ID as a unique key and ignores repeats. See D-005 and
-[05](./05-architecture-and-schema.md).
+[design doc](./design/design-doc.md).
 
 **Persist before processing**
 Save the raw incoming event to the database before doing anything else with it. If the app
@@ -91,7 +91,7 @@ LLM output and database records.
 
 **StateGraph (LangGraph)**
 A workflow written as nodes and edges, with conditional branches. It is how the missed-call
-agent is structured. See [ADR 0001](./adr/0001-orchestration-langgraph.md).
+agent is structured. See [D-008](./decisions/D-008-langgraph-orchestration.md).
 
 **Checkpointer**
 Saves a LangGraph run's state to Postgres, so a run can resume after a restart.
@@ -105,7 +105,7 @@ LLM extracts fields correctly. Stored in `evals/datasets/` once it exists.
 
 **DPA (Data Processing Agreement)**
 A contract that makes a supplier a processor of personal data. Required before live customer
-data goes to Twilio or an LLM provider. See R4 and [ADR 0002](./adr/0002-llm-provider.md).
+data goes to Twilio or an LLM provider. See R4 and [D-009](./decisions/D-009-swappable-llm-provider.md).
 
 **Bedrock API key**
 A bearer token generated in the AWS console for Amazon Bedrock. Set as
@@ -118,7 +118,7 @@ Made-up test data. Only synthetic data may be used in development until a DPA is
 
 **Gate (G0a, G0b, G0c)**
 A pass/fail check that must pass before build work starts. See
-[00 §6](./00-business-plan.md).
+[business plan §6](./product/business-plan.md).
 
 **Resolution comment**
 A comment on a closed issue that links the PR and the files that resolved it. Required by

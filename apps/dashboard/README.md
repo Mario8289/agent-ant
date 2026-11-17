@@ -10,4 +10,4 @@ Jinja2 templates) rather than as a separate deployable, to keep one service and 
 - Template: `apps/api/src/agent_ant_api/templates/dashboard.html`
 - Approval logic: `packages/core/src/agent_ant_core/db/approval.py`
 
-See `docs/05-architecture-and-schema.md`.
+See `docs/design/design-doc.md`.

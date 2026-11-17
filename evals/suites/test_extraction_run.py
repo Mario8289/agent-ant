@@ -1,7 +1,8 @@
 """The real scored runs: extraction against the golden sets (issues #26, #27).
 
 Both skip when no provider is configured (``LLM_PROVIDER`` / ``LLM_MODEL``; setup in
-``docs/10``). ``just eval`` runs them and writes reports to ``evals/reports/``.
+``docs/runbooks/manual-steps.md``). ``just eval`` runs them and writes reports to
+``evals/reports/``.
 
 - ``golden_v2`` is the gate (H8a, D-017): a held-out set, the mean of three runs. Only counts are
   printed, never per-message answers, so nobody tunes the prompt against it by accident.
@@ -34,7 +35,7 @@ def test_gate_on_the_held_out_set() -> None:
     settings = get_settings()
     llm = build_llm(settings)
     if llm is None:
-        pytest.skip("no LLM provider configured; set up Bedrock per docs/10")
+        pytest.skip("no LLM provider configured; set up Bedrock per docs/runbooks/manual-steps.md")
 
     examples = load_golden_set(DATASET_V2)
     gate = run_gate(llm, examples)
@@ -56,7 +57,7 @@ def test_gate_on_the_held_out_set() -> None:
 def test_regression_guard_on_the_tuning_set() -> None:
     llm = build_llm(get_settings())
     if llm is None:
-        pytest.skip("no LLM provider configured; set up Bedrock per docs/10")
+        pytest.skip("no LLM provider configured; set up Bedrock per docs/runbooks/manual-steps.md")
 
     report = run_eval(llm, load_golden_set())
     write_report(report)

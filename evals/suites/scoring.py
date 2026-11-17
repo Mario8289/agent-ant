@@ -5,7 +5,8 @@ uses containment (see ``job_type_correct``). A ``None`` label means "absent": a 
 extraction is also ``None``; filling in an absent field, or missing a present one, counts wrong.
 A failed extraction (no valid JSON after repair) scores every field wrong — it was not useful.
 
-The thresholds are constants, frozen by D-017 (``docs/06-decision-log.md``) on 2026-11-13.
+The thresholds are constants, frozen by D-017 (``docs/decisions/D-017-h8-accuracy-gate.md``) on
+2026-11-13.
 D-017 also records that the first scored run happened before any freeze and that the ``job_type``
 metric changed after it. The gate is the mean of ``GATE_RUNS`` runs on the held-out ``golden_v2`` set.
 """

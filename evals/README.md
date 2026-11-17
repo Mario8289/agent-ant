@@ -2,7 +2,7 @@
 
 Golden sets and evaluation suites. Kept apart from unit tests because evals are slow, cost
 money, and are non-deterministic — they never run in the default `just test`. Run them with
-`just eval` (needs a configured LLM provider; see `docs/10`).
+`just eval` (needs a configured LLM provider; see `docs/runbooks/manual-steps.md`).
 
 | Path | Contents |
 |---|---|

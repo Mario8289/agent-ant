@@ -1,9 +1,9 @@
 """Business metrics for the missed-call funnel (issue #30).
 
-The four numbers the founder actually acts on (docs/01 "Metric definitions"): capture rate,
-reply rate, jobs booked and edit rate. Each is computed as a ratio over the persisted tables so
-it is a measurement, not a guess, and the raw counts are carried alongside the rates so the
-dashboard can show "3 / 10" rather than a bare percentage. Definitions are frozen in D-022.
+The four numbers the founder actually acts on (docs/discovery/hypotheses.md "Metric definitions"):
+capture rate, reply rate, jobs booked and edit rate. Each is computed as a ratio over the persisted
+tables so it is a measurement, not a guess, and the raw counts are carried alongside the rates so
+the dashboard can show "3 / 10" rather than a bare percentage. Definitions are frozen in D-022.
 """
 
 from dataclasses import dataclass

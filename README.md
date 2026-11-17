@@ -10,15 +10,19 @@ job record, and the tradesperson approves or edits it.
 
 | Path | What |
 |---|---|
-| [docs/](./docs/README.md) | Business plan, hypotheses, architecture, decision log |
-| `apps/` | Deployable services (planned) |
-| `agents/` | One package per agent (planned) |
-| `packages/` | Shared libraries (planned) |
-| `evals/` | Golden sets and evaluation suites (planned) |
+| [docs/](./docs/README.md) | **Start here.** PRD, design doc, C4 diagrams, decision records, runbooks |
+| `apps/api` | The FastAPI service: Twilio webhooks, the approval dashboard, background tasks |
+| `agents/missed_call` | The missed-call extraction agent (versioned prompts, LangGraph approval graph) |
+| `packages/core` | Shared library: database, LLM client, audit, metrics |
+| `evals/` | Golden sets and evaluation suites (`just eval`, paid) |
+| `migrations/` | Alembic migrations |
+| `infra/` | Local Postgres (`docker/`) and the scheduled-jobs CDK stack (`cdk/`) |
+| `spikes/` | Learning exercises, not product code |
+
+Working in the code? Read [AGENTS.md](./AGENTS.md) first. `just setup`, then `just check`.
 
 ## Status
 
-Pre-build. Work is tracked in the [epic](https://github.com/Mario8289/agent-ant/issues/3)
-and the milestones on GitHub. Foundation work (repo scaffold, tooling, CI) is allowed now.
-Product build hours wait until the pre-sprint gates G0a and G0b pass; see
-[docs/00-business-plan.md](./docs/00-business-plan.md) §6.
+The MVP (Weeks 1–5) is built but **not live**. Go-live waits on the deferred pre-sprint gates,
+and the discovery decision ([#143](https://github.com/Mario8289/agent-ant/issues/143)) comes
+first. Current state: [execution plan](./docs/planning/execution-plan.md).

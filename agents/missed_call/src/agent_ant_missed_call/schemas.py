@@ -1,6 +1,6 @@
 """Job record schema.
 
-Mirrors ``docs/05-architecture-and-schema.md``. Two field groups are kept apart on purpose:
+Mirrors ``docs/design/design-doc.md``. Two field groups are kept apart on purpose:
 
 * **Trusted** fields come from the telephony provider and are never produced by the LLM.
 * **Extracted** fields are LLM-produced, validated, and human-correctable.

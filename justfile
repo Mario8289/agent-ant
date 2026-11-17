@@ -31,7 +31,7 @@ eval *args:
 
 # Render the printable interview script to PDF (needs google-chrome or chromium)
 print-script:
-    $(command -v google-chrome || command -v chromium) --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=docs/print/interview-script.pdf docs/print/interview-script.html
+    $(command -v google-chrome || command -v chromium) --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=docs/discovery/print/interview-script.pdf docs/discovery/print/interview-script.html
 
 # Run the API locally
 dev:

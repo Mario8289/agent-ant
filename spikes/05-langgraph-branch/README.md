@@ -16,7 +16,7 @@ extract -> validate --valid--> human_review (interrupt) --> approved | rejected
 
 ## Run the tests
 
-LangGraph is deliberately **not** added to the repo's dependencies yet. ADR 0001 keeps it inside
+LangGraph is deliberately **not** added to the repo's dependencies yet. D-008 keeps it inside
 `agents/missed_call` from Week 2, so the spike pulls it in for one run with `uv --with`. This
 changes neither `pyproject.toml` nor `uv.lock`.
 
@@ -36,7 +36,7 @@ docker compose -f spikes/05-langgraph-branch/docker-compose.yml down
 ```
 
 Expected: `6 passed`. Tested with `langgraph` 1.2.20 and `langgraph-checkpoint-postgres` 3.2.0.
-Pin both when this moves into `agents/missed_call` (ADR 0001).
+Pin both when this moves into `agents/missed_call` (D-008).
 
 ## "6 skipped" means Postgres was not reached
 

@@ -20,7 +20,7 @@ DEFAULT_MAX_REPAIRS = 2
 
 
 class JobExtraction(BaseModel):
-    """Only the LLM-extractable fields from docs/05.
+    """Only the LLM-extractable fields from docs/design/design-doc.md.
 
     ``caller_number`` and timestamps are trusted fields from Twilio metadata, never from the
     model, so ``extra="forbid"`` makes a reply that includes them invalid.
