@@ -21,6 +21,8 @@ interview in [discovery findings](./findings.md).
 **Printable copy:** [print/interview-script.html](./print/interview-script.html) (and the PDF
 next to it). Regenerate the PDF with `just print-script` after editing either file.
 
+**Who and how to find them:** [recruiting](./recruiting.md).
+
 **Setting:** casual, over a cuppa. Not a "meeting".
 **Duration:** 30–40 minutes. Take notes; record only if they are comfortable.
 
