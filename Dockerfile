@@ -5,7 +5,7 @@
 # filesystem). The app is small; a multi-stage lean build is not worth the extra indirection yet.
 #
 # Migrations are NOT run here: they live in `migrations/` at the repo root and run from the repo
-# against Supabase as a separate deploy step (see docs/10). The image only serves the app.
+# against Supabase as a separate deploy step (see docs/runbooks/manual-steps.md). The image only serves the app.
 
 FROM ghcr.io/astral-sh/uv:0.13.7-python3.12-trixie-slim
 

@@ -10,7 +10,7 @@ workload's real constraints, not on platform marketing.
 
 This is a one-way-ish decision: the deploy config, secrets layout and some code (how background
 work runs) are shaped by the host, and re-homing later costs a day or more. The database is
-already settled as Supabase (docs/05) and the LLM is Bedrock on AWS (D-018), so the question is
+already settled as Supabase (docs/design/design-doc.md) and the LLM is Bedrock on AWS (D-018), so the question is
 only the **stateless app layer**.
 
 ## Method
@@ -72,7 +72,7 @@ Three hard constraints fall out of that:
 - Point it at a Docker image (ECR) or a source repo; it builds, runs, autoscales, terminates TLS
   and health-checks the container.
 - Pros: **same AWS account as Bedrock** (one IAM story, one bill), **Activate credits cover
-  hosting** (docs/04), a long-running container so `BackgroundTasks` and `interrupt()` just
+  hosting** (docs/planning/grants.md), a long-running container so `BackgroundTasks` and `interrupt()` just
   work, no Kubernetes. Scales to one (or zero) instance; pennies at this volume.
 - Cons: AWS-specific config (service + IAM role), less "one command" than Fly/Render, pricing
   less transparent than a flat PaaS.
@@ -121,7 +121,7 @@ stateless, so the switch is cheap.
 - [ ] Founder reviews this and picks a host; the choice is recorded as a decision (D-020) with
       this spike cited as the source.
 - [ ] After the decision: write the `Dockerfile`, the deploy config for the chosen host, and the
-      `docs/10` provisioning steps (Supabase project + connection string, secrets, health check).
+      `docs/runbooks/manual-steps.md` provisioning steps (Supabase project + connection string, secrets, health check).
 
 ## Sources
 
@@ -133,5 +133,5 @@ stateless, so the switch is cheap.
 - AWS App Runner vs Fargate: https://docs.aws.amazon.com/apprunner/latest/dg/what-is-apprunner.html
 - Fly.io: https://fly.io/docs/
 - Render: https://render.com/docs
-- Repo context: docs/05 (Supabase, one service), D-005, D-008 (LangGraph `interrupt()`),
-  D-018 (Bedrock), docs/04 (AWS Activate credits cover hosting), #34 (outbox deferred).
+- Repo context: docs/design/design-doc.md (Supabase, one service), D-005, D-008 (LangGraph `interrupt()`),
+  D-018 (Bedrock), docs/planning/grants.md (AWS Activate credits cover hosting), #34 (outbox deferred).

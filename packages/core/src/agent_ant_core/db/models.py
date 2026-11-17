@@ -155,8 +155,8 @@ class HumanEdit(Base):
 
     ``edit_diff`` records only the fields that changed, as ``field -> {"before": ..., "after":
     ...}``. A row existing here is what makes an output count as human-edited. The sketch in
-    doc 05 folds ``human_edited``/``edit_diff`` onto the audit row; a separate table keeps one
-    extraction immutable and lets a single output be corrected more than once.
+    the design doc folds ``human_edited``/``edit_diff`` onto the audit row; a separate table
+    keeps one extraction immutable and lets a single output be corrected more than once.
     """
 
     __tablename__ = "human_edits"

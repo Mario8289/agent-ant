@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Instructions for coding agents (and humans) working in this repository. Read this before
-changing code. It encodes decisions recorded in `docs/06-decision-log.md`; if a rule here
+changing code. It encodes decisions recorded in `docs/decisions/`; if a rule here
 conflicts with the docs, the docs win — and update this file.
 
 ## What this project is
@@ -10,9 +10,9 @@ A Python-first monorepo for building AI agents and the products around them. The
 product is a **missed-call → booked-job** assistant for sole traders. The only agent is
 `missed_call`.
 
-**Read first:** `docs/00-business-plan.md` (why), `docs/05-architecture-and-schema.md`
-(how), `docs/06-decision-log.md` (what was decided), `docs/11-request-flows.md` (what
-happens on each webhook, step by step).
+**Read first:** `docs/README.md` (map and reading paths), `docs/product/prd.md` (what and
+why), `docs/design/design-doc.md` (how), `docs/decisions/` (what was decided, one file per
+`D-NNN`), `docs/design/request-flows.md` (what happens on each webhook, step by step).
 
 ## Non-negotiable rules
 
@@ -41,7 +41,7 @@ packages/      shared libraries         packages/core (agent_ant_core)
 evals/         golden sets + suites     never run in the default test path
 migrations/    Alembic
 infra/docker/  local Postgres
-docs/          business + architecture docs, ADRs in docs/adr/
+docs/          product, discovery, design, decisions, runbooks, planning
 ```
 
 **Dependency direction:** `apps` → `agents` → `packages/core`. Never the reverse. `core` must
@@ -79,17 +79,21 @@ Out of scope until the docs change: real-time voice, multi-agent orchestration, 
 message brokers, invoicing/payments, a polished UI. The MVP is one service, one Postgres, and
 background tasks (D-005).
 
-Also: the pre-sprint gates (`docs/00-business-plan.md` §6) are deferred, not passed. D-010 allows
+Also: the pre-sprint gates (`docs/product/business-plan.md` §6) are deferred, not passed. D-010 allows
 Week 1 build to start before G0a, G0b and the beachhead decision. Nothing reaches a real customer
 before the Week 4 gates, and a failed G0a still means stop.
 
 ## When you finish a change
 
 - `just check` passes.
-- Docs updated if behaviour or decisions changed; new decisions get an entry in
-  `docs/06-decision-log.md`.
+- Docs updated if behaviour or decisions changed. A new decision is a new file
+  `docs/decisions/D-NNN-slug.md` (copy `template.md`) plus a row in `docs/decisions/README.md`.
+  Never edit an accepted decision's content; supersede it.
+- If the change alters scope, update `docs/product/prd.md`. If it alters design, update
+  `docs/design/design-doc.md`, and `docs/design/c4.md` when a component is added, moved or
+  removed.
 - If you changed a route, its ordering, or the `raw_events` schema, update
-  `docs/11-request-flows.md`.
+  `docs/design/request-flows.md`.
 - The PR body says `Closes #<n>` for each issue it resolves.
 - Each closed issue gets a resolution comment linking the PR and the files it delivered.
   `Closes #<n>` closes silently and leaves no evidence on the issue.

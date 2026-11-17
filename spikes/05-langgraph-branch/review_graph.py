@@ -1,6 +1,6 @@
 """#61 Spike 5: extract -> validate -> (branch) -> interrupt for approval -> resume.
 
-The graph mirrors the shape in docs/05 and ADR 0001:
+The graph mirrors the shape in docs/design/design-doc.md and D-008:
 
     extract -> validate --valid--> human_review (interrupt) --> END (approved / rejected)
                         \\--invalid--> flag_for_human --------> END (needs_review)

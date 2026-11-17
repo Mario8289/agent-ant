@@ -7,8 +7,8 @@ Scheduler's ECS target cannot override a container's command — the command is 
 task definition.
 
 Account-specific values come from CDK context (``-c key=value``) so nothing secret or
-environment-specific is committed here. See ``README.md`` and ``docs/10-manual-steps.md`` for the
-list of keys and the deploy command.
+environment-specific is committed here. See ``README.md`` and ``docs/runbooks/manual-steps.md``
+for the list of keys and the deploy command.
 """
 
 from typing import Any
@@ -87,8 +87,9 @@ class SchedulerStack(cdk.Stack):
                     "bedrock:Converse",
                     "bedrock:ConverseStream",
                 ],
-                # The Bedrock spend guard (SCP, docs/10) is the hard limit; narrow this to the
-                # locked model's ARN at the same time as the App Runner instance role (D-016).
+                # The Bedrock spend guard (SCP, docs/runbooks/manual-steps.md) is the hard limit;
+                # narrow this to the locked model's ARN at the same time as the App Runner
+                # instance role (D-016).
                 resources=["*"],
             )
         )
@@ -210,7 +211,8 @@ class SchedulerStack(cdk.Stack):
         value = self._optional(key)
         if not value:
             raise ValueError(
-                f"missing required CDK context: pass -c {key}=... (see docs/10-manual-steps.md)"
+                f"missing required CDK context: pass -c {key}=... (see "
+                f"docs/runbooks/manual-steps.md)"
             )
         return value
 

@@ -47,5 +47,5 @@ or, from the repo root, `just cdk-synth` / `cdk-diff` / `cdk-deploy` (pass the `
 | `llmModel` | no | Default `eu.anthropic.claude-sonnet-4-6`. |
 | `retryRateMinutes` | no | Default `5`. |
 
-The two secrets are the ones `docs/10-manual-steps.md` already has App Runner read, so this stack
+The two secrets are the ones `docs/runbooks/manual-steps.md` already has App Runner read, so this stack
 reuses them rather than duplicating them. Nothing secret belongs in this file or in `cdk.json`.
