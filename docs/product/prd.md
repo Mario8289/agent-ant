@@ -112,7 +112,7 @@ If G0a fails, stop and reconsider the wedge (business plan §6).
 
 | Question | Owner | Where |
 |---|---|---|
-| Does the missed-call wedge survive discovery, or is receipts/paperwork the better wedge (H9)? | Founder | #143 |
+| Does the missed-call wedge survive discovery, or is another back-office task the better wedge: receipts and paperwork (H9), or admin time in general (H10)? | Founder | #143 |
 | Which beachhead segment: one trade, one region? | Founder | #15 |
 | How does a trader set up call forwarding without help? | Founder | [Forwarding runbook](../runbooks/telephony-forwarding-test.md) |
 | What reply rate counts as a pass for H6? | Founder, after the first live week | D-022 |

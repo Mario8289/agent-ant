@@ -1,7 +1,7 @@
 ---
 title: Hypothesis Table
 status: draft
-version: 0.5
+version: 0.6
 last_updated: 2026-11-17
 sources:
   - Ries — The Lean Startup (2011) — leap-of-faith, innovation accounting — verified
@@ -39,6 +39,7 @@ line up front so results cannot be rationalised afterwards.
 | **H8** | Extraction is accurate enough to be useful | Score against a hand-labelled golden set | job_type ≥ 0.80 and urgency ≥ 0.90 *(proposed — freeze before the first scored run)* | Week 3 eval | First scored run on `golden_v1` with exact match: `job_type` 7/20 (0.35), `urgency` 16/20 (0.80). Fails. The line was never frozen before this run (D-017) | **failed; superseded by H8a** |
 | **H8a** | Extraction is accurate enough to be useful (replaces H8) | `job_type` scored by containment (answer within one word of the label), mean of 3 runs on the held-out `golden_v2` (40 messages), prompt `extract_v3` | job_type ≥ 0.80 and urgency ≥ 0.90 *(frozen 2026-11-13 by D-017, before the gated run)* | Week 3 eval; real evidence is the Week 4 edit rate | 2026-11-13, one gated run on `golden_v2` (3 passes of 40): `job_type` 36, 35, 35 /40 (mean 0.883), `urgency` 40/40 each (1.000). Passes the line. A synthetic smoke test; live edit rate still decides | **passed (smoke test)** |
 | **H9** | Keeping job receipts and year-end paperwork in order is a top-3 admin pain for sole traders | Interviews 2–6 using script v0.3: the unprompted admin-pain question (Section 1) is asked before receipts come up (Section D) | ≥3 of interviews 2–6 name receipts, job costs or year-end paperwork as a top-3 pain **unprompted**, **and** give a specific recent instance (hours spent or a lost receipt) *(frozen 2026-11-17, before interview 2)* | the discovery findings | Source: interview 1, which does not count towards its own pass line. Dad named year-end paperwork unprompted; one envelope of receipts per job | untested |
+| **H10** | Back-office admin costs sole traders their own time, not just working time | Interviews 2–6 using script v0.4: questions 6a and 6b ask for last week's admin hours and when they happened | ≥3 of interviews 2–6 give a **specific recent week** with **≥5 hours** of admin done in evenings or at weekends *(frozen 2026-11-17, before interview 2)* | the discovery findings | Source: the founder's reading of interview 1 (year-end paperwork done outside the working day). Hours were not asked in interview 1, so it does not count | untested |
 
 ## Metric definitions (avoid vanity metrics)
 
@@ -70,6 +71,9 @@ line up front so results cannot be rationalised afterwards.
 
 ## Change history
 
+- **0.6 (2026-11-17)** — H10 added: does back-office admin cost sole traders their own
+  time (evenings and weekends)? Pass line frozen before interview 2. Tested by questions 6a/6b in
+  interview script v0.4. H9's test is unaffected: v0.4 still asks Section 1 before Section D.
 - **0.5 (2026-11-17)** — H1 interview 1 of 6 recorded (does not count). H9 added from
   interview 1 (receipts and year-end paperwork); pass line frozen before interview 2.
 - **0.4 (2026-11-13)** — H8a gated run recorded: passed. H8 result recorded (failed, exact match, first run) and superseded by
