@@ -44,7 +44,7 @@ def session(engine: Engine) -> Iterator[Session]:
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE raw_events, job_records, llm_output_audits, human_edits, "
+                "TRUNCATE raw_events, job_records, job_events, llm_output_audits, human_edits, "
                 "opt_outs, outbound_messages"
             )
         )
