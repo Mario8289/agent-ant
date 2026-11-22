@@ -1,8 +1,8 @@
 ---
 title: Execution Plan — what to do, in order
 status: draft
-version: 0.3
-last_updated: 2026-11-17
+version: 0.4
+last_updated: 2026-11-22
 sources:
   - ../product/business-plan.md §6 (gates) and §7 (6-week sprint)
   - GitHub milestones: Pre-sprint gates, Week 1–6
@@ -11,22 +11,44 @@ sources:
 # Execution Plan
 
 One page that says what to do next. The business plan explains *why*; this page says *what*.
-Each item links to its GitHub issue. Work the phases in order: a phase does not start until the
-one before it has passed its gate.
+Each item links to its GitHub issue. The Week 1–6 sections below record how the missed-call
+backend was built. **They are history, not the plan.** The plan from 2026-11-22 is in "Where
+things stand".
 
 Time budget: about 14 hours a week, roughly 2 hours a day ([business plan §7](../product/business-plan.md)).
 
-## Where things stand (2026-11-17)
+## Where things stand (2026-11-22)
 
 - **Built:** Weeks 1–5. Webhooks, auto-text, extraction, golden-set gate (passed), dashboard,
   metrics, deployment, hardening, voicemail-to-text.
-- **Not live.** Go-live (#31) waits for the pre-sprint gates below, which D-010 deferred.
-- **Blocking everything else:** the G0a decision (#143). Interview 1 did not support H1. Until
-  #143 is decided, no new missed-call feature work. Open sub-issues: five more interviews with
-  traders who mostly do private work (#140), the envelope walkthrough for H9 (#141), and asking
-  Dad how he reacts to a text back (#142).
+- **Not live.** Go-live is readiness-based, with no date and Dad's say (D-033). The checklist is
+  in the go-live issue.
+- **Gates are now checkpoints (D-033).** Interviews (#10, #140, #141, #142, #143), the forwarding
+  test (#47) and the beachhead choice (#15) run in parallel. They steer the work and do not stop
+  it.
+- **Direction (D-033, D-034):** a mobile app (Expo) where named AI employees handle the back
+  office, with receipts as the next agent.
 
-## Pre-sprint gates
+### The plan, in phases
+
+Phases are in dependency order. Reorder them in the issues, not here.
+
+| Phase | What | Notes |
+|---|---|---|
+| 0 | Decisions and housekeeping: D-030, D-033, D-034, D-035; milestones | This change |
+| 1 | Foundations: JSON API with OpenAPI, trader auth, customers and messages with a `channel` (#123), `job_status` and `transition()` with `job_events` (#124, D-030), an employee registry, conversations, a channel-aware `send()` | Prerequisite for the app and for chat |
+| 2 | The Expo app: Today, Jobs, + sheet, Team, chat, receipt confirm, job detail ([mockups v2](../design/mockups/v2/index.html)) | Generated TypeScript client from the OpenAPI schema |
+| 3 | WhatsApp as a channel: Twilio sandbox, inbound route, a new `raw_events.source`, a router, replies labelled by employee. Start Meta business verification now | A channel, not an agent |
+| 4 | Agents: Receipts (Bookkeeper) first, then Level 1 clarifying questions for the Receptionist (D-035), then skeleton quote drafter and follow-up chaser with a fake LLM in tests | One at a time |
+
+**Go-live checklist (proposed):** trader login, the mobile app, WhatsApp chat, receipts end to
+end, the forwarding test on Dad's handset, the DPA and paid LLM tier (#16), and Dad saying it is
+polished enough.
+
+Competitor positioning is in [competitors](../product/competitors.md) (vendor pages only).
+Spike #151 verifies it.
+
+## Pre-sprint gates (now checkpoints, D-033)
 
 | Order | Issue | Who | Task | Done when |
 |---|---|---|---|---|
@@ -35,6 +57,9 @@ Time budget: about 14 hours a week, roughly 2 hours a day ([business plan §7](.
 | 3 | [#12](https://github.com/Mario8289/agent-ant/issues/12) | Me, in `spikes/` | Five precursor spikes, one per learning-track row 1–5 (see below) | Each spike's "done when" test passes |
 | 4 | [#47](https://github.com/Mario8289/agent-ant/issues/47) | Parked | Forwarding on Dad's real plan | Not started. Needed before any real customer call |
 | 5 | [#17](https://github.com/Mario8289/agent-ant/issues/17) | You | Grant and credit applications per [grants timeline](./grants.md) | Not on the critical path; can run in parallel |
+
+> **Superseded (D-033).** The rest of this section describes the original gates. G0a, G0b and
+> #15 are now checkpoints that run in parallel. "If G0a fails, stop" no longer applies.
 
 **Gate check before Week 1:**
 - **G0a** (#10): at least 3 of 6 interviewees describe a specific missed call and a lost job.
@@ -105,7 +130,7 @@ Deferred from this week: `HELP`/`STOP` handling (#72), persisting outbound messa
 | 2 | [#26](https://github.com/Mario8289/agent-ant/issues/26) | Eval harness and a frozen accuracy threshold (H8) |
 | 3 | [#27](https://github.com/Mario8289/agent-ant/issues/27) | **Gate:** accuracy review. Below threshold, fix extraction before adding anything |
 
-## Week 4 — Dad goes live (text only)
+## Week 4 — Dad goes live (text only) (history: go-live is now readiness-based, D-033)
 
 | Order | Issue | Task |
 |---|---|---|
@@ -143,6 +168,8 @@ Nothing reaches a real customer before #16 is closed.
 
 ## Change history
 
+- **0.4 (2026-11-22)**: Direction change (D-033, D-034). Gates became checkpoints, go-live
+  became readiness-based, and the phased plan was added. Weeks 1–6 are marked history.
 - **0.3 (2026-11-17)**: "Where things stand" added; the G0c Ready Check moved here from the old
   doc 05 (D-032).
 - **0.2 (2026-11-07)** — Week 1 starts before the gates (D-010); spikes marked built.

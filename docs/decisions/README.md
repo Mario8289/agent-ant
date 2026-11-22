@@ -1,8 +1,8 @@
 ---
 title: Decision Records
 status: draft
-version: 1.0
-last_updated: 2026-11-17
+version: 1.1
+last_updated: 2026-11-22
 sources:
   - Nygard — Documenting Architecture Decisions (ADR format) — verified
   - Ries — The Lean Startup (2011) — validated learning — verified
@@ -39,18 +39,18 @@ still points to the same decision.
 |---|---|---|---|
 | [D-001](./D-001-wedge-missed-call.md) | Wedge is missed call → auto-text → job record | accepted | 2026-11-04 |
 | [D-002](./D-002-defer-real-time-voice.md) | Real-time voice deferred past Week 6 | accepted | 2026-11-04 |
-| [D-003](./D-003-one-agent-prototype.md) | 6-week goal is a one-agent prototype | accepted | 2026-11-04 |
+| [D-003](./D-003-one-agent-prototype.md) | 6-week goal is a one-agent prototype | superseded by D-033 | 2026-11-04 |
 | [D-004](./D-004-fixed-template-sms.md) | Customer-facing SMS is a fixed template only | accepted | 2026-11-04 |
 | [D-005](./D-005-one-service-one-postgres.md) | One service, one Postgres, no broker | accepted | 2026-11-04 |
-| [D-006](./D-006-dad-live-week-4.md) | Dad goes live in Week 4 | accepted | 2026-11-04 |
+| [D-006](./D-006-dad-live-week-4.md) | Dad goes live in Week 4 | superseded by D-033 | 2026-11-04 |
 | [D-007](./D-007-uv-monorepo-layout.md) | Python-first `uv` workspace monorepo, `agent_ant_*` naming | accepted | 2026-11-04 |
 | [D-008](./D-008-langgraph-orchestration.md) | Orchestration: LangGraph for the missed-call agent | accepted | 2026-11-05 |
 | [D-009](./D-009-swappable-llm-provider.md) | LLM provider: swappable for the MVP, DPA-backed lock before live | accepted | 2026-11-05 |
-| [D-010](./D-010-build-before-gates.md) | Start Week 1 build before G0a, G0b and the beachhead decision | accepted | 2026-11-07 |
+| [D-010](./D-010-build-before-gates.md) | Start Week 1 build before G0a, G0b and the beachhead decision | superseded by D-033 | 2026-11-07 |
 | [D-011](./D-011-sms-sender-twilio-number.md) | Auto-SMS sender: Twilio number plus business name in the text (R2) | accepted | 2026-11-07 |
 | [D-012](./D-012-audit-trail-tables.md) | Audit trail: two tables (`llm_output_audits` + `human_edits`), `job_id` deferred | accepted | 2026-11-09 |
 | [D-013](./D-013-job-records-background-extraction.md) | `job_records` table + background extraction; the approval interrupt stays Week 4 | accepted | 2026-11-09 |
-| [D-014](./D-014-dashboard-in-api.md) | Dashboard lives in the API (one service), server-rendered | accepted | 2026-11-09 |
+| [D-014](./D-014-dashboard-in-api.md) | Dashboard lives in the API (one service), server-rendered | superseded by D-034 | 2026-11-09 |
 | [D-015](./D-015-eu-cross-region-inference.md) | LLM inference: `eu.*` cross-region acceptable, `global.*` rejected | accepted | 2026-11-10 |
 | [D-016](./D-016-extraction-model-sonnet-4-6.md) | Extraction model: Claude Sonnet 4.6 for now (newer models account-gated) | accepted | 2026-11-10 |
 | [D-017](./D-017-h8-accuracy-gate.md) | H8 accuracy gate: containment metric for `job_type`, held-out `golden_v2`, frozen pass line (H8a) | accepted | 2026-11-13 |
@@ -66,9 +66,12 @@ still points to the same decision.
 | [D-027](./D-027-retention-and-erasure.md) | Retention + erasure: raw/audit data redacted at 90 days, job records kept, on-request erase (#95) | accepted | 2026-11-13 |
 | [D-028](./D-028-cdk-scheduled-jobs.md) | Schedule retry/purge via CDK: EventBridge Scheduler → ECS Fargate (#96) | accepted | 2026-11-13 |
 | [D-029](./D-029-voicemail-to-text.md) | Voicemail-to-text: async Twilio transcription feeds the extraction pipeline (#33) | accepted | 2026-11-14 |
-| D-030 | *Reserved* for the customer and job lifecycle decision (#122). Not yet written. | — | — |
+| [D-030](./D-030-mvp-job-lifecycle.md) | MVP job lifecycle: four states (Lead, In work, Complete, Lost), kept separate from the review status (#122, part 1) | accepted | 2026-11-22 |
 | [D-031](./D-031-agent-roadmap-planned.md) | Agent roadmap is planned, not built: epics for agents 1–4 blocked by the prototype and its gates | accepted | 2026-11-14 |
 | [D-032](./D-032-documentation-structure.md) | Documentation structure: PRD, design doc, one file per decision, C4 diagrams | accepted | 2026-11-17 |
+| [D-033](./D-033-checkpoints-not-gates.md) | Gates become checkpoints, go-live is readiness-based, more than one agent allowed. Supersedes D-003, D-006, D-010; amends D-031 | accepted | 2026-11-22 |
+| [D-034](./D-034-expo-app-named-employees.md) | Mobile-first Expo app with named AI employees; JSON API replaces the trader dashboard. Supersedes D-014 | accepted | 2026-11-22 |
+| [D-035](./D-035-customer-autonomy-ladder.md) | Customer-facing AI follows an autonomy ladder (fixed template, picked question, bounded writing) | proposed | 2026-11-22 |
 
 ## Anti-patterns
 
@@ -80,11 +83,16 @@ still points to the same decision.
 
 ## Open questions
 
-- Which beachhead segment: carpenters nationally, or one region? See issue #15. D-010 deferred
-  it. Until it is decided, the working assumption is tradespeople in general.
+- Which beachhead segment: carpenters nationally, or one region? See issue #15. It is a
+  checkpoint, not a gate (D-033). Until it is decided, the working assumption is tradespeople in
+  general.
+- D-030 covers the MVP job states only. Customer stages, actor permissions, transition triggers
+  and gaps G1–G4 are still open on #122.
 
 ## Change history
 
+- **1.1 (2026-11-22)**: added D-030, D-033, D-034 and D-035. D-003, D-006 and D-010 superseded by
+  D-033; D-014 superseded by D-034. D-031 amended by D-033 (its own text is unchanged).
 - **1.0 (2026-11-17)**: split from `06-decision-log.md` into one file per decision (D-032).
   ADR 0001 merged into D-008 and ADR 0002 into D-009. History before the split is in the old
   log's change history and in `git log --follow`.

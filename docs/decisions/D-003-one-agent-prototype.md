@@ -1,14 +1,14 @@
 ---
 id: D-003
 title: "6-week goal is a one-agent prototype"
-status: accepted
+status: superseded by D-033
 date: 2026-11-04
 ---
 
 # D-003 — 6-week goal is a one-agent prototype
 
 - **Date:** 2026-11-04
-- **Status:** accepted
+- **Status:** superseded by D-033
 - **Reversible?** cheap
 
 ## Context

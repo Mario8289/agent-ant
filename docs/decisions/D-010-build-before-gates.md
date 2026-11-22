@@ -1,14 +1,14 @@
 ---
 id: D-010
 title: "Start Week 1 build before G0a, G0b and the beachhead decision"
-status: accepted
+status: superseded by D-033
 date: 2026-11-07
 ---
 
 # D-010 — Start Week 1 build before G0a, G0b and the beachhead decision
 
 - **Date:** 2026-11-07
-- **Status:** accepted
+- **Status:** superseded by D-033
 - **Reversible?** cheap — about one week of segment-agnostic plumbing.
 
 ## Context

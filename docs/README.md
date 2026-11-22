@@ -1,8 +1,8 @@
 ---
 title: Trades AI — Documentation
 status: draft
-version: 1.0
-last_updated: 2026-11-17
+version: 1.1
+last_updated: 2026-11-22
 ---
 
 # Trades AI — Documentation
@@ -54,6 +54,7 @@ supports one of those three.
 | `product/` | [PRD](./product/prd.md) | Problem, users, goals and metrics, user stories, scope, gates | draft |
 | | [Business plan](./product/business-plan.md) | Thesis, competitors, 6-week sprint, kill/continue gates | draft |
 | | [Roadmap](./product/roadmap.md) | Agents that might follow `missed_call`, ranked. Planned, not built (D-031) | draft |
+| | [Competitors](./product/competitors.md) | Feature and price gaps against receipt, job-costing and chasing tools. Vendor pages only so far | draft |
 | `discovery/` | [Hypotheses](./discovery/hypotheses.md) | Falsifiable assumptions with pass lines committed in advance | draft |
 | | [Interview script](./discovery/interview-script.md) | Mom Test discovery interview, no pitching ([printable](./discovery/print/interview-script.pdf)) | draft |
 | | [Findings](./discovery/findings.md) | What each interview found, and patterns across them | draft |
@@ -61,6 +62,7 @@ supports one of those three.
 | `design/` | [Design doc](./design/design-doc.md) | How it's built: design, data model, interfaces, alternatives, NFRs, risks, rollout, testing | draft |
 | | [C4 diagrams](./design/c4.md) | Context, containers, components | draft |
 | | [Request flows](./design/request-flows.md) | Sequence diagrams for each webhook, with code anchors | draft |
+| | [Mockups v2](./design/mockups/v2/index.html) | The mobile app: Today, Jobs, + sheet, Team and chat, receipt confirm. Synthetic data. Tokens become the Expo theme (D-034). [v1](./design/mockups/v1/index.html) is the earlier draft | draft |
 | `decisions/` | [Decision records](./decisions/README.md) | One file per decision, D-001 onwards | — |
 | `runbooks/` | [Manual steps](./runbooks/manual-steps.md) | Console and real-world steps only a person can do | draft |
 | | [Forwarding test](./runbooks/telephony-forwarding-test.md) | G0b: set up and test carrier call forwarding | draft |
@@ -97,6 +99,7 @@ supports one of those three.
 
 ## Change history
 
+- **1.1 (2026-11-22)**: Added competitors and the v2 mockups to the map.
 - **1.0 (2026-11-17)**: Reorganised into folders by kind, with a PRD, a design doc, C4 diagrams
   and one file per decision (D-032). Added reading paths for each role and "where new things
   go". The verification status moved to the [business plan](./product/business-plan.md).

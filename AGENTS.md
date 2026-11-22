@@ -7,12 +7,14 @@ conflicts with the docs, the docs win — and update this file.
 ## What this project is
 
 A Python-first monorepo for building AI agents and the products around them. The first
-product is a **missed-call → booked-job** assistant for sole traders. The only agent is
-`missed_call`.
+product is an AI back office for sole traders: a mobile app where named AI employees (a
+Receptionist, a Bookkeeper) handle missed calls, leads and receipts, D-033 and D-034. The only
+agent built so far is `missed_call`. Receipts is next.
 
 **Read first:** `docs/README.md` (map and reading paths), `docs/product/prd.md` (what and
 why), `docs/design/design-doc.md` (how), `docs/decisions/` (what was decided, one file per
-`D-NNN`), `docs/design/request-flows.md` (what happens on each webhook, step by step).
+`D-NNN`), `docs/design/request-flows.md` (what happens on each webhook, step by step),
+`docs/design/mockups/v2/` (the app's screens).
 
 ## Non-negotiable rules
 
@@ -35,7 +37,7 @@ These are safety and trust rules, not style preferences.
 ## Repository layout
 
 ```
-apps/          deployable services      apps/api (agent_ant_api)
+apps/          deployable services      apps/api (agent_ant_api); apps/mobile (Expo, planned, D-034)
 agents/        one package per agent    agents/missed_call (agent_ant_missed_call)
 packages/      shared libraries         packages/core (agent_ant_core)
 evals/         golden sets + suites     never run in the default test path
@@ -76,12 +78,18 @@ Use `uv` for everything. Add dependencies to the relevant package's `pyproject.t
 ## What not to build yet
 
 Out of scope until the docs change: real-time voice, multi-agent orchestration, microservices,
-message brokers, invoicing/payments, a polished UI. The MVP is one service, one Postgres, and
-background tasks (D-005).
+message brokers, invoicing/payments, accounting or tax software, a second industry's workflow
+or a workflow engine (D-030). The backend is one service, one Postgres, and background tasks
+(D-005). More than one agent is allowed, one at a time (D-033). A polished mobile UI is now in
+scope (D-034).
 
-Also: the pre-sprint gates (`docs/product/business-plan.md` §6) are deferred, not passed. D-010 allows
-Week 1 build to start before G0a, G0b and the beachhead decision. Nothing reaches a real customer
-before the Week 4 gates, and a failed G0a still means stop.
+Discovery interviews and the forwarding test are checkpoints, not gates (D-033). Go-live is
+readiness-based, with Dad's say. Nothing reaches a real customer before the checklist in D-033
+passes. No real customer data before the DPA is locked (#16, D-018).
+
+Customer-facing AI follows the autonomy ladder (D-035). Until it is accepted, only Level 0
+(fixed template, D-004) is allowed. The mobile UI follows D-034: tabs, three taps or fewer, and
++ as a shortcut to actions that also live on a tab.
 
 ## When you finish a change
 
