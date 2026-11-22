@@ -39,11 +39,11 @@ Phases are in dependency order. Reorder them in the issues, not here.
 | 1 | Foundations: JSON API with OpenAPI, trader auth, customers and messages with a `channel` (#123), `job_status` and `transition()` with `job_events` (#124, D-030), an employee registry, conversations, a channel-aware `send()` | Prerequisite for the app and for chat |
 | 2 | The Expo app: Today, Jobs, + sheet, Team, chat, receipt confirm, job detail ([mockups v2](../design/mockups/v2/index.html)) | Generated TypeScript client from the OpenAPI schema |
 | 3 | WhatsApp as a channel: Twilio sandbox, inbound route, a new `raw_events.source`, a router, replies labelled by employee. Start Meta business verification now | A channel, not an agent |
-| 4 | Agents: Receipts (Bookkeeper) first, then Level 1 clarifying questions for the Receptionist (D-035), then skeleton quote drafter and follow-up chaser with a fake LLM in tests | One at a time |
+| 4 | Agents: Receipts (Bookkeeper) first, then skeleton quote drafter and follow-up chaser with a fake LLM in tests. Level 1 clarifying questions (D-035) stay out of the MVP | One at a time |
 
-**Go-live checklist (proposed):** trader login, the mobile app, WhatsApp chat, receipts end to
-end, the forwarding test on Dad's handset, the DPA and paid LLM tier (#16), and Dad saying it is
-polished enough.
+**Go-live checklist (proposed):** trader login, the mobile app, receipts end to end, the
+forwarding test on Dad's handset, the DPA and paid LLM tier (#16), and Dad saying it is polished
+enough. WhatsApp is a post-go-live phase, not required for go-live.
 
 Competitor positioning is in [competitors](../product/competitors.md) (vendor pages only).
 Spike #151 verifies it.

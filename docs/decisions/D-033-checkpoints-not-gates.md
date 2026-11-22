@@ -47,16 +47,16 @@ What has changed:
    has the final say. The checklist (proposed, tracked in a go-live issue):
    - trader login
    - the mobile app
-   - chat with the team on WhatsApp
+   - chat with the team on WhatsApp (post-go-live, not required to go live)
    - the receipts agent working end to end
    - the forwarding test passing on Dad's own handset and plan (what G0b tests, now a technical
      check, not a strategic gate)
    - the DPA and paid LLM tier confirmed (#16, D-018)
    - Dad says it is polished enough
 3. **More than one agent may be built.** D-003's "no second agent" no longer applies. Build one
-   at a time, each under the same non-negotiables. First: receipts (the Bookkeeper). Then
-   clarifying questions for the Receptionist (D-035, Level 1). Skeletons of the quote drafter and
-   follow-up chaser follow, with a fake LLM in tests.
+   at a time, each under the same non-negotiables. First: receipts (the Bookkeeper). Clarifying
+   questions for the Receptionist (D-035, Level 1) are deferred out of the MVP. Skeletons of the
+   quote drafter and follow-up chaser follow, with a fake LLM in tests.
 4. **D-031 is amended, not replaced.** Receipts is promoted ahead of agents 1–4. The gates it
    lists as blockers (#10, #32, #37) no longer block. The lifecycle (D-030, epic #121) remains a
    prerequisite for agents that need job states. Agents 5–12 stay as rows in the roadmap.

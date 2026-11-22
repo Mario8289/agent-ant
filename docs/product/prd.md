@@ -89,12 +89,11 @@ The vanity metric we do not report as progress: total calls logged.
   Bookkeeper first.
 - Receipts: capture, link to a job, spend against quote, CSV export. No tax software.
 - A four-state job lifecycle: Lead, In work, Complete, Lost (D-030).
-- Clarifying questions picked from a fixed bank (D-035, Level 1).
 
 **Out of scope (MVP):** real-time voice, invoicing, accounting and tax software, payments,
 quoting, multi-agent orchestration, social or procurement agents, a second industry, distributed
-architecture. What might follow the MVP is in the [roadmap](./roadmap.md). It is planned but
-not built (D-031).
+architecture, and customer-facing clarifying questions (D-035 Level 1, deferred). What might
+follow the MVP is in the [roadmap](./roadmap.md). It is planned but not built (D-031).
 
 ## Non-negotiables
 

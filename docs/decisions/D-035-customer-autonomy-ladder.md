@@ -8,8 +8,9 @@ date: 2026-11-22
 # D-035 — Customer-facing AI follows an autonomy ladder
 
 - **Date:** 2026-11-22
-- **Status:** proposed. The founder agreed Levels 0 and 1 and the design-only treatment of Level 2
-  in conversation. The record stays proposed until the open questions below are answered.
+- **Status:** proposed. The founder accepted Level 0 and the design-only treatment of Level 2. On
+  2026-11-22 the founder decided Level 1 (the model picks a pre-written question) is not treated as
+  consistent with D-004, so the record stays proposed and Level 1 stays out of the MVP.
 - **Reversible?** cheap. Each level is a setting that can be switched off.
 
 ## Context
@@ -34,7 +35,7 @@ The current Level 0 text (`sms.py`) does not say it is automated: "This is our t
 | Level | What the AI does | Status |
 |---|---|---|
 | 0 | Fixed template, as built (D-004) | built |
-| 1 | The model **picks** from a fixed bank of pre-written clarifying questions. Every word the customer sees was written and reviewed by a human | build in the MVP |
+| 1 | The model **picks** from a fixed bank of pre-written clarifying questions. Every word the customer sees was written and reviewed by a human | deferred — not treated as consistent with D-004 (founder, 2026-11-22) |
 | 2 | The model writes a clarifying question under limits (length, one question, no prices or promises), per-trader opt-in, off by default, behind evals | design only |
 | 3 | Fully conversational | not planned |
 
@@ -51,14 +52,16 @@ Rules at every level:
 
 ## Consequences
 
-- A question bank and a picker are built for Level 1. No customer-facing prose is generated.
+- Level 1 (a question bank and a picker) is deferred and not in the MVP. No customer-facing prose
+  is generated at any level.
 - Trader-facing chat is unrestricted, because nothing there reaches a customer.
 - Level 2 stays unbuilt, and its design is recorded for when evidence supports it.
 
 ## Open questions
 
-- **Does Level 1 count as consistent with D-004?** The words are pre-written, so the argument is
-  yes. Founder to confirm.
+- ~~Does Level 1 count as consistent with D-004?~~ **Answered no (2026-11-22).** The founder does
+  not treat Level 1 as consistent with D-004, so Level 1 stays out of the MVP and the record stays
+  proposed. Revisit if the founder changes his mind.
 - **Should the Level 0 text say it is automated?** The wording today does not. Founder to decide,
   with the PECR and consumer-law reading in the consent spike (#127).
 
