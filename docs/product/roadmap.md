@@ -1,8 +1,8 @@
 ---
 title: Agent Roadmap
 status: draft
-version: 0.3
-last_updated: 2026-11-17
+version: 0.4
+last_updated: 2026-11-22
 sources:
   - Thiel — Zero to One (2014) — 10x on one axis, escape competition — verified (the business plan)
   - Ries — The Lean Startup (2011) — validated learning, commit pass lines first — verified (the business plan)
@@ -19,8 +19,11 @@ Rank the agents that could follow `missed_call`, say what each one does, and gro
 roles a tradesperson recognises. The product idea is that a sole trader should feel they have
 the back office of a much larger firm: a secretary, an estimator, an accounts clerk.
 
-This is a **plan, not a build order that has started**. Per D-031, no code for any agent here
-is written until the missed-call prototype is finished and its gates have passed.
+This is a **plan**. D-031 held back all agent code until the prototype and its gates passed.
+D-033 (2026-11-22) lifts that: gates are checkpoints, and agents are built one at a time.
+**Receipts (the Bookkeeper) is promoted to first**, ahead of agents 1–4, on the evidence of the
+envelope pain in interview 1 (H9). Agent 7 in §3 is the same agent. Roles are now named AI
+employees the trader chats with (D-034).
 
 > ⚠️ **The ranking is a desk judgement.** The discovery sheet
 > ([discovery findings](../discovery/findings.md)) was empty when this was written. H4 is tested by
@@ -114,6 +117,10 @@ the first four have taught us something; stories for them now would be guesses.
 
 All sit under the `Post-W6 roadmap` milestone.
 
+> **Updated by D-033.** The gates in the table below no longer block. The lifecycle (#121,
+> D-030 for the MVP states) still does. The `blocked-by-gate` label is kept until the issues
+> are re-triaged.
+
 Every epic and story carries the `blocked-by-gate` label and is blocked by:
 
 | Blocker | Issue |
@@ -127,7 +134,7 @@ Every epic and story carries the `blocked-by-gate` label and is blocked by:
 The quote drafter is also blocked by the 10x-axis decision
 ([#15](https://github.com/Mario8289/agent-ant/issues/15)).
 
-A failed G0a still means stop. In that case these epics are closed as Won't Do, not started.
+A failed G0a no longer means stop (D-033). Interview findings can reorder or close these epics.
 
 ### WhatsApp is a channel, not an agent
 
@@ -258,6 +265,8 @@ unverified.
 
 ## Change history
 
+- **0.4 (2026-11-22)** — D-033: gates lifted, receipts promoted to first, roles become named
+  employees (D-034). D-030 records the MVP lifecycle.
 - **0.3 (2026-11-17)** — §5: WhatsApp is planned as a channel shared by agents 1–4, not an
   agent; D-004 still applies; channel modelling raised as an open question on #122.
 - **0.2 (2026-11-14)** — added §7: how each agent fits the shared lifecycle (#121), and

@@ -1,14 +1,14 @@
 ---
 id: D-006
 title: "Dad goes live in Week 4"
-status: accepted
+status: superseded by D-033
 date: 2026-11-04
 ---
 
 # D-006 — Dad goes live in Week 4
 
 - **Date:** 2026-11-04
-- **Status:** accepted
+- **Status:** superseded by D-033
 - **Reversible?** cheap
 
 ## Context

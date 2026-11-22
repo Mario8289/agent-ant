@@ -1,14 +1,14 @@
 ---
 id: D-014
 title: "Dashboard lives in the API (one service), server-rendered"
-status: accepted
+status: superseded by D-034
 date: 2026-11-09
 ---
 
 # D-014 — Dashboard lives in the API (one service), server-rendered
 
 - **Date:** 2026-11-09
-- **Status:** accepted
+- **Status:** superseded by D-034
 - **Reversible?** cheap — the routes and templates can move to a separate app later.
 
 ## Context

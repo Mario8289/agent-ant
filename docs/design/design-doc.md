@@ -1,8 +1,8 @@
 ---
 title: Design Doc — Missed-call → booked-job MVP
 status: draft
-version: 1.0
-last_updated: 2026-11-17
+version: 1.1
+last_updated: 2026-11-22
 sources:
   - Lubanovic — FastAPI: Modern Python Web Development (O'Reilly, 2024) — verified
   - Kleppmann & Riccomini — Designing Data-Intensive Applications, 2nd ed. (2026) — verified
@@ -19,6 +19,13 @@ them rather than repeating them.
 **Companion documents:** [C4 diagrams](./c4.md) (the parts) ·
 [Request flows](./request-flows.md) (what happens on each webhook, step by step, with code
 anchors).
+
+> **Direction change (2026-11-22).** This doc describes the missed-call backend as built. The
+> product is widening into a mobile app with named AI employees (D-034), a four-state job
+> lifecycle (D-030), more than one agent (D-033), and an autonomy ladder for customer messages
+> (D-035). Those parts are planned and are not yet in §2. The app's screens are in the
+> [mockups](./mockups/v2/index.html). §2 and the C4 diagrams will be updated as each piece is
+> built.
 
 ## 1. Context and goals
 
@@ -39,7 +46,7 @@ rejects it. See the [PRD](../product/prd.md) for the user stories and success me
 **This design does not:**
 
 - Let the LLM write anything a customer sees (D-004).
-- Handle real-time voice (D-002), invoicing or payments, or run more than one agent (D-003).
+- Handle real-time voice (D-002) or invoicing or payments. More than one agent is now allowed, one at a time (D-033, which supersedes D-003).
 - Use a message broker, microservices or a second database (D-005).
 
 **Design principle:** deliberately boring. One service, one Postgres, background tasks. A
@@ -191,7 +198,9 @@ The main options we turned down. The full reasoning is in each decision record.
 | LLM provider | AWS Bedrock (EU profile) | Anthropic API, OpenAI, Vertex AI | DPA, no-training commitment, UK/EU region, same AWS account | [D-009](../decisions/D-009-swappable-llm-provider.md), [D-018](../decisions/D-018-bedrock-provider-lock.md) |
 | Inference geography | `eu.*` cross-region | `eu-west-2` only; `global.*` | More models while data stays in the EU; `global.*` can route to the US | [D-015](../decisions/D-015-eu-cross-region-inference.md) |
 | Hosting | App Runner | Vercel, Fargate service, Fly.io, Render, Railway | Background tasks and `interrupt()` need a long-running process; Fly.io and Render are the fallback | [D-020](../decisions/D-020-app-runner-hosting.md) |
-| Dashboard | Server-rendered inside the API | Separate SPA / second service | Keeps one service and a Python-only repo | [D-014](../decisions/D-014-dashboard-in-api.md) |
+| Dashboard | Server-rendered inside the API (operator page) | Separate SPA / second service | Keeps one service and a Python-only repo. Superseded for the trader-facing UI by D-034 | [D-014](../decisions/D-014-dashboard-in-api.md) |
+| Trader UI | Expo app on a JSON API | React web in Capacitor; server-rendered PWA | Native camera and push, one codebase | [D-034](../decisions/D-034-expo-app-named-employees.md) |
+| Job lifecycle | Four states in one table, separate from review `status` | Ten states now; reuse `status`; workflow engine | Nothing to build that no agent uses | [D-030](../decisions/D-030-mvp-job-lifecycle.md) |
 | SMS sender | Twilio number, business named in text | Alphanumeric sender ID; porting Dad's number | Alphanumeric IDs can't receive replies; porting redesigns forwarding | [D-011](../decisions/D-011-sms-sender-twilio-number.md) |
 | Opt-out | Handled in our DB | Twilio Advanced Opt-Out | State stays in Postgres; no per-number cost | [D-019](../decisions/D-019-help-stop-opt-out.md) |
 | Scheduler | CDK: EventBridge → Fargate | Hand-made console cron | Reviewable and drift-checked | [D-028](../decisions/D-028-cdk-scheduled-jobs.md) |
@@ -231,12 +240,12 @@ The main options we turned down. The full reasoning is in each decision record.
 | Stage | What | State |
 |---|---|---|
 | Weeks 1–3 | Webhooks, auto-text, extraction, golden set and accuracy gate | done |
-| Week 4 | Deploy to App Runner (D-020), dashboard, metrics; **Dad goes live, text only** (#31) | built; go-live waiting on the gates |
+| Week 4 | Deploy to App Runner (D-020), dashboard, metrics; **Dad goes live, text only** (#31) | built; go-live waits for readiness (D-033) |
 | Week 5 | Hardening (retries, alerts, retention) and voicemail-to-text | done |
 | Week 6 | Live measurement and continue/kill review (#37) | not started |
 
-**Go-live is gated.** Nothing reaches a real customer before G0a, G0b and the Week 4 checks pass
-([execution plan](../planning/execution-plan.md)). Before the first real message, re-confirm
+**Go-live is readiness-based (D-033).** Nothing reaches a real customer before the go-live
+checklist passes ([execution plan](../planning/execution-plan.md)). Before the first real message, re-confirm
 the DPA and the paid tier (D-018).
 
 **Deploying:** build one image, push it to ECR, and App Runner deploys it. Run migrations
@@ -285,6 +294,8 @@ change to a prompt or model gets a new prompt version and a golden-set re-run be
 
 ## Change history
 
+- **1.1 (2026-11-22)**: Direction-change banner and two rows in §3 (D-030, D-034). Go-live
+  wording follows D-033. §2 and the C4 diagrams are unchanged until the planned parts are built.
 - **1.0 (2026-11-17)**: Renamed from "05 — Architecture & Schema" and reshaped into a design
   doc (D-032). Added context and goals, interfaces, alternatives considered, non-functional
   requirements, rollout and testing strategy. The component diagram moved to [c4.md](./c4.md).
