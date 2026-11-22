@@ -19,6 +19,7 @@ from sqlalchemy import (
     MetaData,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -97,6 +98,10 @@ class JobRecord(Base):
             "status IN ('captured', 'needs_review', 'approved', 'rejected')", name="status_valid"
         ),
         CheckConstraint("urgency IN ('low', 'medium', 'high', 'unknown')", name="urgency_valid"),
+        CheckConstraint(
+            "job_status IN ('enquiry', 'in_progress', 'completed', 'lost')",
+            name="job_status_valid",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -115,11 +120,34 @@ class JobRecord(Base):
     urgency: Mapped[str] = mapped_column(Text, default="unknown")
     preferred_date: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, default="captured")
+    # Job progress (D-030), separate from the extraction-review ``status`` above. ``on_hold`` is
+    # a flag, not a state: it only has meaning on an ``in_progress`` job.
+    job_status: Mapped[str] = mapped_column(Text, default="enquiry", server_default="enquiry")
+    on_hold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     extraction_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class JobEvent(Base):
+    """One job-status transition, appended by ``transition()`` and never edited (D-030).
+
+    Append-only history: each row records the move from one status to another, who made it and
+    why, so the Jobs screen can show how a job got where it is and every move is traceable.
+    """
+
+    __tablename__ = "job_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    job_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("job_records.id"))
+    job: Mapped[JobRecord] = relationship()
+    from_status: Mapped[str] = mapped_column(Text)
+    to_status: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class LLMOutputAudit(Base):
